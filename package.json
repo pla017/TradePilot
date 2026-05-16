@@ -1,0 +1,17 @@
+{
+  "name": "tradepilot-classroom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "外贸收汇风险课堂互动系统原型",
+  "type": "module",
+  "scripts": {
+    "db:init": "node server.js --init-db",
+    "check:ai": "node scripts/check-ai.js",
+    "self-test": "node server.js --self-test",
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

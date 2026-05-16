@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>教师数据看板 | TradePilot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell dashboard-shell">
+      <header class="hero dashboard-hero">
+        <div>
+          <p class="eyebrow">Teacher Dashboard</p>
+          <h1>教师数据看板</h1>
+          <p class="hero-copy">查看 7 个小组的方案提交、风险判断、AI 使用状态和课堂收获词云。</p>
+        </div>
+        <div class="hero-tools">
+          <button class="soft-button" id="exportBtn" type="button">导出数据</button>
+          <button class="danger-button" id="resetBtn" type="button">清空课堂数据</button>
+          <button class="soft-button" id="refreshBtn" type="button">刷新数据</button>
+          <a class="ghost-link" href="/">学生端</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="metric-grid">
+          <article class="metric-card">
+            <span>小组数量</span>
+            <strong id="totalGroups">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>方案提交</span>
+            <strong id="totalSubmissions">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>课堂反馈</span>
+            <strong id="totalReflections">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>AI兜底次数</span>
+            <strong id="aiFallback">0</strong>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Submission</p>
+                <h2>三大任务完成度</h2>
+              </div>
+            </div>
+            <div id="scenarioStats" class="stats-list"></div>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Risk</p>
+                <h2>混合支付风险分布</h2>
+              </div>
+            </div>
+            <div id="riskBars" class="risk-bars"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid wide-left">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Groups</p>
+                <h2>小组进度统计</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>小组</th>
+                    <th>托收</th>
+                    <th>信用证</th>
+                    <th>混合支付</th>
+                    <th>均分</th>
+                  </tr>
+                </thead>
+                <tbody id="groupProgress"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Word Cloud</p>
+                <h2>课堂收获词云</h2>
+              </div>
+            </div>
+            <div id="wordCloud" class="word-cloud"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid wide-right">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h2>最新方案提交</h2>
+              </div>
+            </div>
+            <div id="recentSubmissions" class="submission-list"></div>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Feedback</p>
+                <h2>课堂收获原文</h2>
+              </div>
+            </div>
+            <div id="reflectionList" class="reflection-list"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/dashboard.js" type="module"></script>
+  </body>
+</html>

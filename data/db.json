@@ -1,0 +1,99 @@
+{
+  "groups": [
+    {
+      "id": "g1",
+      "name": "第1组"
+    },
+    {
+      "id": "g2",
+      "name": "第2组"
+    },
+    {
+      "id": "g3",
+      "name": "第3组"
+    },
+    {
+      "id": "g4",
+      "name": "第4组"
+    },
+    {
+      "id": "g5",
+      "name": "第5组"
+    },
+    {
+      "id": "g6",
+      "name": "第6组"
+    },
+    {
+      "id": "g7",
+      "name": "第7组"
+    }
+  ],
+  "students": [
+    { "id": "g1_rep", "groupId": "g1", "name": "第1组代表" },
+    { "id": "g1_s1", "groupId": "g1", "name": "胡靖晗" },
+    { "id": "g1_s2", "groupId": "g1", "name": "李同学" },
+    { "id": "g1_s3", "groupId": "g1", "name": "王同学" },
+    { "id": "g1_s4", "groupId": "g1", "name": "赵同学" },
+    { "id": "g2_rep", "groupId": "g2", "name": "第2组代表" },
+    { "id": "g2_s1", "groupId": "g2", "name": "陈同学" },
+    { "id": "g2_s2", "groupId": "g2", "name": "刘同学" },
+    { "id": "g2_s3", "groupId": "g2", "name": "周同学" },
+    { "id": "g2_s4", "groupId": "g2", "name": "吴同学" },
+    { "id": "g3_rep", "groupId": "g3", "name": "第3组代表" },
+    { "id": "g3_s1", "groupId": "g3", "name": "孙同学" },
+    { "id": "g3_s2", "groupId": "g3", "name": "郑同学" },
+    { "id": "g3_s3", "groupId": "g3", "name": "何同学" },
+    { "id": "g3_s4", "groupId": "g3", "name": "马同学" },
+    { "id": "g4_rep", "groupId": "g4", "name": "第4组代表" },
+    { "id": "g4_s1", "groupId": "g4", "name": "朱同学" },
+    { "id": "g4_s2", "groupId": "g4", "name": "林同学" },
+    { "id": "g4_s3", "groupId": "g4", "name": "郭同学" },
+    { "id": "g4_s4", "groupId": "g4", "name": "罗同学" },
+    { "id": "g5_rep", "groupId": "g5", "name": "第5组代表" },
+    { "id": "g5_s1", "groupId": "g5", "name": "梁同学" },
+    { "id": "g5_s2", "groupId": "g5", "name": "宋同学" },
+    { "id": "g5_s3", "groupId": "g5", "name": "唐同学" },
+    { "id": "g5_s4", "groupId": "g5", "name": "许同学" },
+    { "id": "g6_rep", "groupId": "g6", "name": "第6组代表" },
+    { "id": "g6_s1", "groupId": "g6", "name": "韩同学" },
+    { "id": "g6_s2", "groupId": "g6", "name": "冯同学" },
+    { "id": "g6_s3", "groupId": "g6", "name": "董同学" },
+    { "id": "g6_s4", "groupId": "g6", "name": "曾同学" },
+    { "id": "g7_rep", "groupId": "g7", "name": "第7组代表" },
+    { "id": "g7_s1", "groupId": "g7", "name": "袁同学" },
+    { "id": "g7_s2", "groupId": "g7", "name": "潘同学" },
+    { "id": "g7_s3", "groupId": "g7", "name": "邓同学" },
+    { "id": "g7_s4", "groupId": "g7", "name": "蔡同学" }
+  ],
+  "scenarios": [
+    {
+      "id": "sc_collection",
+      "code": "collection_crisis",
+      "title": "托收收汇危机",
+      "phase": 1,
+      "sortOrder": 1,
+      "description": "顺达工贸与希腊客商托收结算，货物出运后客户因欧盟反倾销税上调至79%拒付。请你作为业务员，提出化解托收收汇危机的对策。"
+    },
+    {
+      "id": "sc_lc",
+      "code": "lc_crisis",
+      "title": "信用证收汇危机",
+      "phase": 1,
+      "sortOrder": 2,
+      "description": "阿联酋信用证订单，因霍尔木兹海峡关闭，目的港由杰贝阿里港变更为阿曼苏哈尔港，导致单证不符，开证行可能拒付。请提出化解信用证收汇危机的对策。"
+    },
+    {
+      "id": "sc_mixed",
+      "code": "mixed_payment",
+      "title": "混合支付风险适配",
+      "phase": 2,
+      "sortOrder": 3,
+      "description": "针对不同风险等级的海外订单，科学搭配预付款、信用证、托收，保障安全收汇。"
+    }
+  ],
+  "submissions": [],
+  "riskAssessments": [],
+  "aiMessages": [],
+  "reflections": []
+}

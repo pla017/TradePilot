@@ -6,7 +6,7 @@
     <title>教师数据看板 | TradePilot</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
+  <body class="teacher-page">
     <div class="app-shell dashboard-shell">
       <header class="hero dashboard-hero">
         <div>
@@ -35,6 +35,10 @@
           <article class="metric-card">
             <span>课堂反馈</span>
             <strong id="totalReflections">0</strong>
+          </article>
+          <article class="metric-card">
+            <span>自评互评</span>
+            <strong id="totalEvaluations">0</strong>
           </article>
           <article class="metric-card">
             <span>AI兜底次数</span>
@@ -81,6 +85,8 @@
                     <th>信用证</th>
                     <th>混合支付</th>
                     <th>均分</th>
+                    <th>自评</th>
+                    <th>互评</th>
                   </tr>
                 </thead>
                 <tbody id="groupProgress"></tbody>
@@ -110,6 +116,19 @@
             <div id="recentSubmissions" class="submission-list"></div>
           </article>
 
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Evaluation</p>
+                <h2>自评与互评记录</h2>
+              </div>
+            </div>
+            <div id="evaluationSummary" class="evaluation-summary"></div>
+            <div id="evaluationList" class="reflection-list"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid wide-right">
           <article class="dashboard-panel">
             <div class="section-title-row">
               <div>

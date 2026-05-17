@@ -9,8 +9,9 @@ const __dirname = path.dirname(__filename);
 await loadLocalEnv();
 
 const PORT = Number(process.env.PORT || 3000);
-const DB_FILE = path.join(__dirname, "data", "tradepilot.sqlite");
-const SEED_FILE = path.join(__dirname, "data", "db.json");
+const DATA_DIR = process.env.TRADEPILOT_DATA_DIR || path.join(__dirname, "data");
+const DB_FILE = path.join(DATA_DIR, "tradepilot.sqlite");
+const SEED_FILE = process.env.TRADEPILOT_SEED_FILE || path.join(__dirname, "data", "db.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 const CONTENT_TYPES = {
@@ -124,6 +125,11 @@ const server = http.createServer(async (req, res) => {
       return await handleReflection(body, res);
     }
 
+    if (url.pathname === "/api/evaluations" && req.method === "POST") {
+      const body = await readBody(req);
+      return await handleEvaluation(body, res);
+    }
+
     if (url.pathname === "/api/ai" && req.method === "POST") {
       const body = await readBody(req);
       return await handleAi(body, res);
@@ -227,6 +233,12 @@ async function readDb() {
     FROM reflections
     ORDER BY created_at;
   `);
+  const evaluations = await sqliteJson(`
+    SELECT id, type, group_id AS groupId, student_id AS studentId, student_name AS studentName,
+           target_group_id AS targetGroupId, score, content, created_at AS createdAt
+    FROM evaluations
+    ORDER BY created_at;
+  `);
 
   return {
     groups,
@@ -242,7 +254,8 @@ async function readDb() {
       totalScore: Number(item.totalScore || 0)
     })),
     aiMessages: aiMessages.map((item) => ({ ...item, success: Boolean(item.success) })),
-    reflections
+    reflections,
+    evaluations: evaluations.map((item) => ({ ...item, score: Number(item.score || 0) }))
   };
 }
 
@@ -333,9 +346,23 @@ async function ensureDatabase() {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS evaluations (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL CHECK(type IN ('self', 'peer')),
+      group_id TEXT NOT NULL REFERENCES groups(id),
+      student_id TEXT REFERENCES students(id),
+      student_name TEXT NOT NULL,
+      target_group_id TEXT REFERENCES groups(id),
+      score INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_submissions_group ON submissions(group_id);
     CREATE INDEX IF NOT EXISTS idx_ai_messages_group ON ai_messages(group_id);
     CREATE INDEX IF NOT EXISTS idx_reflections_group ON reflections(group_id);
+    CREATE INDEX IF NOT EXISTS idx_evaluations_group ON evaluations(group_id);
+    CREATE INDEX IF NOT EXISTS idx_evaluations_target ON evaluations(target_group_id);
   `);
 
   const existing = await sqliteJson("SELECT COUNT(*) AS count FROM groups;");
@@ -400,6 +427,7 @@ async function saveDynamicData(db) {
     "DELETE FROM submissions;",
     "DELETE FROM ai_messages;",
     "DELETE FROM reflections;",
+    "DELETE FROM evaluations;",
     ...db.submissions.map((item) =>
       insertSql("submissions", {
         id: item.id,
@@ -454,6 +482,19 @@ async function saveDynamicData(db) {
         created_at: item.createdAt
       })
     ),
+    ...db.evaluations.map((item) =>
+      insertSql("evaluations", {
+        id: item.id,
+        type: item.type,
+        group_id: item.groupId,
+        student_id: item.studentId || null,
+        student_name: item.studentName || "学生",
+        target_group_id: item.targetGroupId || null,
+        score: Number(item.score || 0),
+        content: item.content,
+        created_at: item.createdAt
+      })
+    ),
     "COMMIT;",
     "PRAGMA foreign_keys = ON;"
   ];
@@ -468,6 +509,7 @@ async function resetClassroomData() {
     DELETE FROM submissions;
     DELETE FROM ai_messages;
     DELETE FROM reflections;
+    DELETE FROM evaluations;
     COMMIT;
     PRAGMA foreign_keys = ON;
   `);
@@ -597,6 +639,46 @@ async function handleReflection(body, res) {
     };
     db.reflections.push(reflection);
     return { reflection, wordCloud: generateWordCloud(db.reflections) };
+  });
+
+  if (result.error) return sendJson(res, { error: result.error }, result.status || 400);
+  return sendJson(res, result);
+}
+
+async function handleEvaluation(body, res) {
+  const result = await updateDb(async (db) => {
+    const type = body.type === "peer" ? "peer" : "self";
+    const group = db.groups.find((item) => item.id === body.groupId);
+    const student = db.students.find((item) => item.id === body.studentId && item.groupId === body.groupId);
+    if (!group) return { error: "请选择评价小组。", status: 400 };
+    if (!student) return { error: "请选择评价学生。", status: 400 };
+
+    const targetGroupId = type === "peer" ? String(body.targetGroupId || "") : group.id;
+    const targetGroup = db.groups.find((item) => item.id === targetGroupId);
+    if (!targetGroup) return { error: "请选择被评价小组。", status: 400 };
+    if (type === "peer" && targetGroup.id === group.id) {
+      return { error: "互评请选择其他小组。", status: 400 };
+    }
+
+    const score = Math.max(1, Math.min(5, Number(body.score || 0)));
+    if (!Number.isFinite(score) || score < 1) return { error: "请选择1-5分评价。", status: 400 };
+
+    const content = String(body.content || "").trim();
+    if (content.length < 4) return { error: "请写下评价理由。", status: 400 };
+
+    const evaluation = {
+      id: createId(type === "peer" ? "peer" : "self"),
+      type,
+      groupId: group.id,
+      studentId: student.id,
+      studentName: student.name,
+      targetGroupId,
+      score,
+      content,
+      createdAt: new Date().toISOString()
+    };
+    db.evaluations.push(evaluation);
+    return { evaluation };
   });
 
   if (result.error) return sendJson(res, { error: result.error }, result.status || 400);
@@ -849,6 +931,8 @@ function buildDashboard(db) {
 
   const groupProgress = db.groups.map((group) => {
     const groupSubmissions = submissions.filter((item) => item.groupId === group.id);
+    const selfItems = db.evaluations.filter((item) => item.type === "self" && item.groupId === group.id);
+    const peerItems = db.evaluations.filter((item) => item.type === "peer" && item.targetGroupId === group.id);
     return {
       groupId: group.id,
       groupName: group.name,
@@ -857,17 +941,40 @@ function buildDashboard(db) {
       mixed: Boolean(groupSubmissions.find((item) => item.scenarioCode === "mixed_payment")),
       avgScore: groupSubmissions.length
         ? Math.round(groupSubmissions.reduce((sum, item) => sum + Number(item.score || 0), 0) / groupSubmissions.length)
-        : 0
+        : 0,
+      selfCount: selfItems.length,
+      selfAvg: averageScore(selfItems),
+      peerCount: peerItems.length,
+      peerAvg: averageScore(peerItems)
     };
   });
+
+  const evaluationSummary = {
+    total: db.evaluations.length,
+    selfCount: db.evaluations.filter((item) => item.type === "self").length,
+    peerCount: db.evaluations.filter((item) => item.type === "peer").length,
+    selfAvg: averageScore(db.evaluations.filter((item) => item.type === "self")),
+    peerAvg: averageScore(db.evaluations.filter((item) => item.type === "peer"))
+  };
+
+  const evaluations = db.evaluations
+    .map((item) => ({
+      ...item,
+      groupName: db.groups.find((group) => group.id === item.groupId)?.name || "未知小组",
+      targetGroupName: db.groups.find((group) => group.id === item.targetGroupId)?.name || "未知小组"
+    }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return {
     totalGroups: db.groups.length,
     totalSubmissions: submissions.length,
     totalReflections: db.reflections.length,
+    totalEvaluations: db.evaluations.length,
     scenarioStats,
     riskDistribution,
     groupProgress,
+    evaluationSummary,
+    evaluations: evaluations.slice(0, 40),
     recentSubmissions: submissions
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 20),
@@ -879,6 +986,12 @@ function buildDashboard(db) {
       fallback: db.aiMessages.filter((item) => !item.success).length
     }
   };
+}
+
+function averageScore(items) {
+  return items.length
+    ? Number((items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length).toFixed(1))
+    : 0;
 }
 
 function hasSubmitted(db, groupId, scenarioCode) {

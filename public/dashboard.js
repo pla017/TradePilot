@@ -5,12 +5,15 @@ const dom = {
   totalGroups: document.querySelector("#totalGroups"),
   totalSubmissions: document.querySelector("#totalSubmissions"),
   totalReflections: document.querySelector("#totalReflections"),
+  totalEvaluations: document.querySelector("#totalEvaluations"),
   aiFallback: document.querySelector("#aiFallback"),
   scenarioStats: document.querySelector("#scenarioStats"),
   riskBars: document.querySelector("#riskBars"),
   groupProgress: document.querySelector("#groupProgress"),
   wordCloud: document.querySelector("#wordCloud"),
   recentSubmissions: document.querySelector("#recentSubmissions"),
+  evaluationSummary: document.querySelector("#evaluationSummary"),
+  evaluationList: document.querySelector("#evaluationList"),
   reflectionList: document.querySelector("#reflectionList"),
   toast: document.querySelector("#toast")
 };
@@ -38,19 +41,46 @@ async function loadDashboard() {
 }
 
 function renderDashboard(data) {
-  dom.totalGroups.textContent = data.totalGroups;
-  dom.totalSubmissions.textContent = data.totalSubmissions;
-  dom.totalReflections.textContent = data.totalReflections;
-  dom.aiFallback.textContent = data.aiHealth.fallback;
-  renderScenarioStats(data.scenarioStats);
-  renderRiskBars(data.riskDistribution);
-  renderGroupProgress(data.groupProgress);
-  renderWordCloud(data.wordCloud);
-  renderRecentSubmissions(data.recentSubmissions);
-  renderReflections(data.reflections);
+  const dashboard = normalizeDashboard(data);
+
+  dom.totalGroups.textContent = dashboard.totalGroups;
+  dom.totalSubmissions.textContent = dashboard.totalSubmissions;
+  dom.totalReflections.textContent = dashboard.totalReflections;
+  dom.totalEvaluations.textContent = dashboard.totalEvaluations;
+  dom.aiFallback.textContent = dashboard.aiHealth.fallback;
+  renderScenarioStats(dashboard.scenarioStats);
+  renderRiskBars(dashboard.riskDistribution);
+  renderGroupProgress(dashboard.groupProgress);
+  renderWordCloud(dashboard.wordCloud);
+  renderRecentSubmissions(dashboard.recentSubmissions);
+  renderEvaluations(dashboard.evaluations, dashboard.evaluationSummary);
+  renderReflections(dashboard.reflections);
+}
+
+function normalizeDashboard(data = {}) {
+  return {
+    totalGroups: Number(data.totalGroups || 0),
+    totalSubmissions: Number(data.totalSubmissions || 0),
+    totalReflections: Number(data.totalReflections || 0),
+    totalEvaluations: Number(data.totalEvaluations || 0),
+    aiHealth: { fallback: 0, ...(data.aiHealth || {}) },
+    scenarioStats: Array.isArray(data.scenarioStats) ? data.scenarioStats : [],
+    riskDistribution: Array.isArray(data.riskDistribution) ? data.riskDistribution : [],
+    groupProgress: Array.isArray(data.groupProgress) ? data.groupProgress : [],
+    wordCloud: Array.isArray(data.wordCloud) ? data.wordCloud : [],
+    recentSubmissions: Array.isArray(data.recentSubmissions) ? data.recentSubmissions : [],
+    evaluations: Array.isArray(data.evaluations) ? data.evaluations : [],
+    evaluationSummary: { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(data.evaluationSummary || {}) },
+    reflections: Array.isArray(data.reflections) ? data.reflections : []
+  };
 }
 
 function renderScenarioStats(stats) {
+  if (!stats.length) {
+    dom.scenarioStats.innerHTML = `<div class="submission-item"><p>暂无任务统计。</p></div>`;
+    return;
+  }
+
   dom.scenarioStats.innerHTML = stats
     .map((item) => {
       const percent = item.totalGroups ? Math.round((item.submittedGroups / item.totalGroups) * 100) : 0;
@@ -75,6 +105,11 @@ function renderScenarioStats(stats) {
 }
 
 function renderRiskBars(distribution) {
+  if (!distribution.length) {
+    dom.riskBars.innerHTML = `<div class="submission-item"><p>暂无风险分布。</p></div>`;
+    return;
+  }
+
   const max = Math.max(1, ...distribution.map((item) => item.count));
   dom.riskBars.innerHTML = distribution
     .map((item) => {
@@ -93,6 +128,11 @@ function renderRiskBars(distribution) {
 }
 
 function renderGroupProgress(groups) {
+  if (!groups.length) {
+    dom.groupProgress.innerHTML = `<tr><td colspan="7">暂无小组数据。</td></tr>`;
+    return;
+  }
+
   dom.groupProgress.innerHTML = groups
     .map((group) => `
       <tr>
@@ -101,9 +141,15 @@ function renderGroupProgress(groups) {
         <td>${renderCheck(group.lc)}</td>
         <td>${renderCheck(group.mixed)}</td>
         <td>${group.avgScore || "-"}</td>
+        <td>${renderEvaluationCell(group.selfAvg, group.selfCount)}</td>
+        <td>${renderEvaluationCell(group.peerAvg, group.peerCount)}</td>
       </tr>
     `)
     .join("");
+}
+
+function renderEvaluationCell(avg, count) {
+  return count ? `${avg}分 / ${count}条` : "-";
 }
 
 function renderCheck(done) {
@@ -194,6 +240,34 @@ function renderRecentSubmissions(items) {
         <p>${escapeHtml(truncate(item.content, 108))}</p>
       </article>
     `)
+    .join("");
+}
+
+function renderEvaluations(items, summary) {
+  const safeSummary = { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(summary || {}) };
+
+  dom.evaluationSummary.innerHTML = `
+    <span>自评 ${safeSummary.selfCount || 0} 条 · 均分 ${safeSummary.selfAvg || "-"}</span>
+    <span>互评 ${safeSummary.peerCount || 0} 条 · 均分 ${safeSummary.peerAvg || "-"}</span>
+  `;
+
+  if (!items.length) {
+    dom.evaluationList.innerHTML = `<div class="reflection-item"><p>暂无自评或互评。</p></div>`;
+    return;
+  }
+
+  dom.evaluationList.innerHTML = items
+    .map((item) => {
+      const title = item.type === "self"
+        ? `自评 · ${escapeHtml(item.groupName)}`
+        : `互评 · ${escapeHtml(item.groupName)} → ${escapeHtml(item.targetGroupName)}`;
+      return `
+        <article class="reflection-item evaluation-item">
+          <strong>${title} · ${Number(item.score || 0)}分</strong>
+          <p>${escapeHtml(item.studentName)}：${escapeHtml(item.content)}</p>
+        </article>
+      `;
+    })
     .join("");
 }
 

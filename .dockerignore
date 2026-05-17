@@ -1,13 +1,11 @@
-node_modules/
+.git
 .DS_Store
+node_modules
 .env
 .env.local
 .env.production
-.deploy.aliyun.local
-.deploy-sshpass-ssh
-.deploy-sshpass-scp
-data/runtime/
 data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
 *.log
+docs

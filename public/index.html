@@ -6,7 +6,7 @@
     <title>结算宝 | 外贸收汇风险课堂</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
+  <body class="student-page">
     <div class="app-shell">
       <header class="hero">
         <div>
@@ -99,6 +99,8 @@
                 </div>
                 <div class="assistant-reply" id="assistantReply">
                   <p>哈喽，我是结算宝。先观察客户、单据、货权和银行保障，再决定怎么应对。</p>
+                </div>
+                <div class="assistant-reply-actions">
                   <button class="soft-button small" id="speakReplyBtn" type="button">
                     <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 5V5l-5 5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19 6a9 9 0 0 1 0 12"/></svg>
                     语音朗读回复
@@ -226,6 +228,79 @@
           </form>
         </section>
 
+        <section class="stage-section evaluation-section">
+          <div class="section-title-row evaluation-title-row">
+            <div>
+              <p class="eyebrow">课堂评价</p>
+              <h2><svg class="ui-icon title-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 14.8 8.8l6.4.9-4.6 4.5 1.1 6.3L12 17.5 6.3 20.5l1.1-6.3-4.6-4.5 6.4-.9z"/></svg>自评与互评</h2>
+              <p class="section-subtitle">先选择学生姓名，再完成本组自评和对其他小组的互评。</p>
+            </div>
+            <label class="field evaluation-student">
+              <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 22a8 8 0 0 1 16 0"/></svg>评价学生</span>
+              <select id="studentSelect"></select>
+            </label>
+          </div>
+          <div class="evaluation-grid">
+            <form class="evaluation-card" id="selfEvaluationForm">
+              <div class="evaluation-card-head">
+                <span class="evaluation-step">01</span>
+                <div>
+                  <h3>本组自评</h3>
+                  <p>从协作参与、风险分析、方案表达三个角度给本组打分。</p>
+                </div>
+              </div>
+              <div class="evaluation-inline">
+                <label class="field">
+                  <span>自评分数</span>
+                  <select id="selfScore">
+                    <option value="5">5分 · 表现优秀</option>
+                    <option value="4" selected>4分 · 完成较好</option>
+                    <option value="3">3分 · 基本完成</option>
+                    <option value="2">2分 · 仍需改进</option>
+                    <option value="1">1分 · 参与不足</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span>自评理由</span>
+                <textarea id="selfEvaluationContent" rows="4" placeholder="例如：我们能识别主要收汇风险，但付款比例理由还可以更充分。"></textarea>
+              </label>
+              <button class="primary-button wide" type="submit">提交本组自评</button>
+            </form>
+
+            <form class="evaluation-card" id="peerEvaluationForm">
+              <div class="evaluation-card-head">
+                <span class="evaluation-step">02</span>
+                <div>
+                  <h3>小组互评</h3>
+                  <p>选择其他小组，评价方案中值得学习或可以改进的地方。</p>
+                </div>
+              </div>
+              <div class="evaluation-inline two">
+                <label class="field">
+                  <span>被评价小组</span>
+                  <select id="peerTargetGroup"></select>
+                </label>
+                <label class="field">
+                  <span>互评分数</span>
+                  <select id="peerScore">
+                    <option value="5">5分 · 很有启发</option>
+                    <option value="4" selected>4分 · 表达清楚</option>
+                    <option value="3">3分 · 基本完整</option>
+                    <option value="2">2分 · 需要补充</option>
+                    <option value="1">1分 · 依据不足</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span>互评理由</span>
+                <textarea id="peerEvaluationContent" rows="4" placeholder="例如：他们对货权控制分析清楚，但成本控制还可以补充。"></textarea>
+              </label>
+              <button class="primary-button wide" type="submit">提交小组互评</button>
+            </form>
+          </div>
+        </section>
+
         <section class="stage-section reflection-section">
           <div class="section-title-row">
             <div>
@@ -240,10 +315,10 @@
           <form id="reflectionForm" class="reflection-form">
             <div class="reflection-grid">
               <div class="reflection-side">
-                <label class="field">
-                  <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 22a8 8 0 0 1 16 0"/></svg>学生姓名</span>
-                  <select id="studentSelect"></select>
-                </label>
+                <div class="identity-hint">
+                  <strong>当前学生</strong>
+                  <span id="reflectionStudentName">请先在上方评价区选择姓名</span>
+                </div>
               </div>
               <div class="reflection-main">
                 <label class="field">

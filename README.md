@@ -46,3 +46,43 @@ npm run check:ai
 本地开发使用 `.env.local` 中的 `DEEPSEEK_API_KEY`。该文件已加入 `.gitignore`，不会进入代码仓库。
 
 修改 `.env.local` 后需要重启 `npm run dev` 才会生效。
+
+## Docker 部署到阿里云
+
+先准备生产环境变量：
+
+```bash
+cp .env.production.example .env.production
+```
+
+编辑 `.env.production`：
+
+```bash
+HOST_PORT=80
+DEEPSEEK_API_KEY=sk-你的DeepSeekKey
+```
+
+然后一键部署到阿里云 ECS：
+
+```bash
+SERVER_HOST=你的阿里云公网IP \
+SERVER_USER=root \
+SSH_KEY=~/.ssh/id_rsa \
+scripts/deploy-aliyun.sh
+```
+
+如果你用密码登录，可以不传 `SSH_KEY`，脚本会让 SSH/SCP 自己提示输入密码。部署完成后访问：
+
+如果希望以后迭代更新时不再输入 SSH 密码，使用免交互脚本：
+
+```bash
+scripts/deploy-aliyun-password.sh
+```
+
+首次运行会自动创建本地私有配置 `.deploy.aliyun.local`，里面保存服务器地址、用户名和密码。这个文件已加入 `.gitignore`，不要提交到仓库。
+
+```bash
+http://你的阿里云公网IP
+```
+
+注意：阿里云安全组需要放行 `.env.production` 里的 `HOST_PORT`，默认是 `80`。课堂数据会持久化在服务器的 `/opt/tradepilot/data/tradepilot.sqlite`。

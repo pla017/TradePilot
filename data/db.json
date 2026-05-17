@@ -2,69 +2,63 @@
   "groups": [
     {
       "id": "g1",
-      "name": "第1组"
+      "name": "茶马古道组"
     },
     {
       "id": "g2",
-      "name": "第2组"
+      "name": "一带一路组"
     },
     {
       "id": "g3",
-      "name": "第3组"
+      "name": "自信出海组"
     },
     {
       "id": "g4",
-      "name": "第4组"
+      "name": "丝绸之路组"
     },
     {
       "id": "g5",
-      "name": "第5组"
+      "name": "商通天下组"
     },
     {
       "id": "g6",
-      "name": "第6组"
+      "name": "扬帆起航组"
     },
     {
       "id": "g7",
-      "name": "第7组"
+      "name": "千年商港组"
     }
   ],
   "students": [
-    { "id": "g1_rep", "groupId": "g1", "name": "第1组代表" },
     { "id": "g1_s1", "groupId": "g1", "name": "胡靖晗" },
-    { "id": "g1_s2", "groupId": "g1", "name": "李同学" },
-    { "id": "g1_s3", "groupId": "g1", "name": "王同学" },
-    { "id": "g1_s4", "groupId": "g1", "name": "赵同学" },
-    { "id": "g2_rep", "groupId": "g2", "name": "第2组代表" },
-    { "id": "g2_s1", "groupId": "g2", "name": "陈同学" },
-    { "id": "g2_s2", "groupId": "g2", "name": "刘同学" },
-    { "id": "g2_s3", "groupId": "g2", "name": "周同学" },
-    { "id": "g2_s4", "groupId": "g2", "name": "吴同学" },
-    { "id": "g3_rep", "groupId": "g3", "name": "第3组代表" },
-    { "id": "g3_s1", "groupId": "g3", "name": "孙同学" },
-    { "id": "g3_s2", "groupId": "g3", "name": "郑同学" },
-    { "id": "g3_s3", "groupId": "g3", "name": "何同学" },
-    { "id": "g3_s4", "groupId": "g3", "name": "马同学" },
-    { "id": "g4_rep", "groupId": "g4", "name": "第4组代表" },
-    { "id": "g4_s1", "groupId": "g4", "name": "朱同学" },
-    { "id": "g4_s2", "groupId": "g4", "name": "林同学" },
-    { "id": "g4_s3", "groupId": "g4", "name": "郭同学" },
-    { "id": "g4_s4", "groupId": "g4", "name": "罗同学" },
-    { "id": "g5_rep", "groupId": "g5", "name": "第5组代表" },
-    { "id": "g5_s1", "groupId": "g5", "name": "梁同学" },
-    { "id": "g5_s2", "groupId": "g5", "name": "宋同学" },
-    { "id": "g5_s3", "groupId": "g5", "name": "唐同学" },
-    { "id": "g5_s4", "groupId": "g5", "name": "许同学" },
-    { "id": "g6_rep", "groupId": "g6", "name": "第6组代表" },
-    { "id": "g6_s1", "groupId": "g6", "name": "韩同学" },
-    { "id": "g6_s2", "groupId": "g6", "name": "冯同学" },
-    { "id": "g6_s3", "groupId": "g6", "name": "董同学" },
-    { "id": "g6_s4", "groupId": "g6", "name": "曾同学" },
-    { "id": "g7_rep", "groupId": "g7", "name": "第7组代表" },
-    { "id": "g7_s1", "groupId": "g7", "name": "袁同学" },
-    { "id": "g7_s2", "groupId": "g7", "name": "潘同学" },
-    { "id": "g7_s3", "groupId": "g7", "name": "邓同学" },
-    { "id": "g7_s4", "groupId": "g7", "name": "蔡同学" }
+    { "id": "g1_s2", "groupId": "g1", "name": "唐金博" },
+    { "id": "g1_s3", "groupId": "g1", "name": "孙笑妍" },
+    { "id": "g1_s4", "groupId": "g1", "name": "金雨柔" },
+    { "id": "g1_s5", "groupId": "g1", "name": "蔡明轩" },
+    { "id": "g2_s1", "groupId": "g2", "name": "胡烁欣" },
+    { "id": "g2_s2", "groupId": "g2", "name": "吴嘉峥" },
+    { "id": "g2_s3", "groupId": "g2", "name": "洪翊硕" },
+    { "id": "g2_s4", "groupId": "g2", "name": "黄妙彦" },
+    { "id": "g3_s1", "groupId": "g3", "name": "黄乐翔" },
+    { "id": "g3_s2", "groupId": "g3", "name": "任子昊" },
+    { "id": "g3_s3", "groupId": "g3", "name": "陈子睿" },
+    { "id": "g3_s4", "groupId": "g3", "name": "林子姝" },
+    { "id": "g4_s1", "groupId": "g4", "name": "李睿雅" },
+    { "id": "g4_s2", "groupId": "g4", "name": "刘亚茜" },
+    { "id": "g4_s3", "groupId": "g4", "name": "陈妍" },
+    { "id": "g4_s4", "groupId": "g4", "name": "陈雨晞" },
+    { "id": "g5_s1", "groupId": "g5", "name": "唐子寒" },
+    { "id": "g5_s2", "groupId": "g5", "name": "叶谨瑜" },
+    { "id": "g5_s3", "groupId": "g5", "name": "陈宇轩" },
+    { "id": "g5_s4", "groupId": "g5", "name": "卢欣怡" },
+    { "id": "g6_s1", "groupId": "g6", "name": "王甘甜" },
+    { "id": "g6_s2", "groupId": "g6", "name": "龚千皓" },
+    { "id": "g6_s3", "groupId": "g6", "name": "王威晨" },
+    { "id": "g6_s4", "groupId": "g6", "name": "陈雅轩" },
+    { "id": "g7_s1", "groupId": "g7", "name": "夏晓慧" },
+    { "id": "g7_s2", "groupId": "g7", "name": "刘乐乐" },
+    { "id": "g7_s3", "groupId": "g7", "name": "徐雅琦" },
+    { "id": "g7_s4", "groupId": "g7", "name": "傅子轩" }
   ],
   "scenarios": [
     {
@@ -95,5 +89,6 @@
   "submissions": [],
   "riskAssessments": [],
   "aiMessages": [],
-  "reflections": []
+  "reflections": [],
+  "evaluations": []
 }

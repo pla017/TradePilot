@@ -6,6 +6,7 @@ const dom = {
   miniLc: document.querySelector("#miniLc"),
   miniMixed: document.querySelector("#miniMixed"),
   studentSelect: document.querySelector("#studentSelect"),
+  reflectionStudentName: document.querySelector("#reflectionStudentName"),
   stageOneGrid: document.querySelector("#stageOneGrid"),
   stageOneStatus: document.querySelector("#stageOneStatus"),
   railStageOne: document.querySelector("#railStageOne"),
@@ -23,6 +24,13 @@ const dom = {
   customerCase: document.querySelector("#customerCase"),
   reflectionForm: document.querySelector("#reflectionForm"),
   reflectionContent: document.querySelector("#reflectionContent"),
+  selfEvaluationForm: document.querySelector("#selfEvaluationForm"),
+  selfScore: document.querySelector("#selfScore"),
+  selfEvaluationContent: document.querySelector("#selfEvaluationContent"),
+  peerEvaluationForm: document.querySelector("#peerEvaluationForm"),
+  peerTargetGroup: document.querySelector("#peerTargetGroup"),
+  peerScore: document.querySelector("#peerScore"),
+  peerEvaluationContent: document.querySelector("#peerEvaluationContent"),
   aiQuestion: document.querySelector("#aiQuestion"),
   askAiBtn: document.querySelector("#askAiBtn"),
   voiceInputBtn: document.querySelector("#voiceInputBtn"),
@@ -34,11 +42,13 @@ const dom = {
 let state = null;
 let selectedGroupId = localStorage.getItem("tradepilot.groupId") || "g1";
 let currentReply = dom.assistantReply.textContent;
+let cachedVoices = [];
 
 init();
 
 async function init() {
   bindEvents();
+  initSpeechVoices();
   await loadState();
   renderAll();
 }
@@ -49,6 +59,7 @@ function bindEvents() {
     localStorage.setItem("tradepilot.groupId", selectedGroupId);
     renderAll();
   });
+  dom.studentSelect.addEventListener("change", renderReflectionStudentName);
 
   dom.stageOneGrid.addEventListener("submit", handleScenarioSubmit);
 
@@ -65,6 +76,8 @@ function bindEvents() {
   });
 
   dom.customerCase.addEventListener("change", applyCustomerPreset);
+  dom.selfEvaluationForm.addEventListener("submit", handleSelfEvaluationSubmit);
+  dom.peerEvaluationForm.addEventListener("submit", handlePeerEvaluationSubmit);
   dom.reflectionForm.addEventListener("submit", handleReflectionSubmit);
   document.querySelectorAll(".prompt-chips button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -91,6 +104,8 @@ function renderAll() {
   renderGroupSelect();
   renderGroupContext();
   renderStudentSelect();
+  renderReflectionStudentName();
+  renderPeerTargetGroups();
   renderStageOne();
   renderStageTwo();
   dom.railReflection.classList.toggle(
@@ -108,13 +123,17 @@ function renderGroupSelect() {
 
 function renderGroupContext() {
   const group = state.groups.find((item) => item.id === selectedGroupId);
-  const groupName = group?.name || "未知小组";
+  const groupName = currentGroupName();
   dom.currentGroupName.textContent = groupName;
   dom.currentGroupHint.textContent = `${groupName} 的托收、信用证、混合支付方案会同步到教师看板。`;
 
   setMiniStatus(dom.miniCollection, "托收", Boolean(getSubmission("collection_crisis")));
   setMiniStatus(dom.miniLc, "信用证", Boolean(getSubmission("lc_crisis")));
   setMiniStatus(dom.miniMixed, "混合支付", Boolean(getSubmission("mixed_payment")));
+}
+
+function currentGroupName() {
+  return state.groups.find((item) => item.id === selectedGroupId)?.name || "未知小组";
 }
 
 function setMiniStatus(element, label, done) {
@@ -126,6 +145,18 @@ function renderStudentSelect() {
   const students = state.students.filter((student) => student.groupId === selectedGroupId);
   dom.studentSelect.innerHTML = students
     .map((student) => `<option value="${student.id}">${escapeHtml(student.name)}</option>`)
+    .join("");
+}
+
+function renderReflectionStudentName() {
+  const student = state.students.find((item) => item.id === dom.studentSelect.value);
+  dom.reflectionStudentName.textContent = student ? `${student.name}（${currentGroupName()}）` : "请先选择学生姓名";
+}
+
+function renderPeerTargetGroups() {
+  const options = state.groups.filter((group) => group.id !== selectedGroupId);
+  dom.peerTargetGroup.innerHTML = options
+    .map((group) => `<option value="${group.id}">${escapeHtml(group.name)}</option>`)
     .join("");
 }
 
@@ -161,7 +192,7 @@ function renderStageOne() {
             <textarea name="content" rows="7" placeholder="${placeholder}">${escapeHtml(submission?.content || "")}</textarea>
           </label>
           <button class="primary-button wide" type="submit">${icon("chart")}AI顾问·多维点评</button>
-          ${renderFeedback(submission)}
+          ${renderFeedback(submission, scenario.code)}
         </form>
       `;
     })
@@ -253,6 +284,72 @@ async function handleMixedSubmit(event) {
   } finally {
     button.disabled = false;
     button.textContent = "提交混合支付策略";
+  }
+}
+
+async function handleSelfEvaluationSubmit(event) {
+  event.preventDefault();
+  await submitEvaluation({
+    type: "self",
+    score: dom.selfScore.value,
+    content: dom.selfEvaluationContent.value.trim(),
+    button: dom.selfEvaluationForm.querySelector("button"),
+    onSuccess: () => {
+      dom.selfEvaluationContent.value = "";
+      showToast("本组自评已提交到教师看板。");
+    }
+  });
+}
+
+async function handlePeerEvaluationSubmit(event) {
+  event.preventDefault();
+  await submitEvaluation({
+    type: "peer",
+    targetGroupId: dom.peerTargetGroup.value,
+    score: dom.peerScore.value,
+    content: dom.peerEvaluationContent.value.trim(),
+    button: dom.peerEvaluationForm.querySelector("button"),
+    onSuccess: () => {
+      dom.peerEvaluationContent.value = "";
+      showToast("小组互评已提交到教师看板。");
+    }
+  });
+}
+
+async function submitEvaluation({ type, targetGroupId, score, content, button, onSuccess }) {
+  const studentId = dom.studentSelect.value;
+  const student = state.students.find((item) => item.id === studentId);
+  if (!student) {
+    showToast("请先选择学生姓名。");
+    return;
+  }
+  if (!content) {
+    showToast("请先填写评价理由。");
+    return;
+  }
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "提交中...";
+  try {
+    const result = await api("/api/evaluations", {
+      method: "POST",
+      body: {
+        type,
+        groupId: selectedGroupId,
+        studentId,
+        targetGroupId,
+        score,
+        content
+      }
+    });
+    state.evaluations.push(result.evaluation);
+    onSuccess();
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
   }
 }
 
@@ -380,14 +477,17 @@ function speak(text, options = {}) {
 
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  const voices = window.speechSynthesis.getVoices();
-  utterance.voice =
-    voices.find((voice) => /Xiaoxiao|Ting|Mei|普通话|Mandarin|Chinese|zh/i.test(voice.name)) ||
-    voices.find((voice) => /zh/i.test(voice.lang)) ||
-    null;
+  const preferredVoice = getPreferredVoice();
+  utterance.voice = preferredVoice;
   utterance.lang = "zh-CN";
-  utterance.rate = 1.05;
-  utterance.pitch = 1.35;
+  utterance.rate = 1.02;
+  utterance.pitch = preferredVoice?.name && /Xiaoxiao|Xiaochen|Xiaoyi|Yaoyao|Tingting|Meijia|Female|Girl/i.test(preferredVoice.name)
+    ? 1.68
+    : 1.48;
+  utterance.volume = 1;
+  if (!preferredVoice && !options.silent) {
+    showToast("当前浏览器未发现理想女声音色，已使用系统中文语音。");
+  }
   window.speechSynthesis.speak(utterance);
 }
 
@@ -440,12 +540,33 @@ function upsertSubmission(submission) {
   else state.submissions[index] = submission;
 }
 
-function renderFeedback(submission) {
+function renderFeedback(submission, scenarioCode = "") {
+  if (scenarioCode === "collection_crisis" || scenarioCode === "lc_crisis") {
+    return renderThreeDimensionFeedback(submission, scenarioCode);
+  }
   return `
     <div class="feedback-box">
       <h4>点评维度 & 智能反馈</h4>
       <div class="feedback-divider"></div>
       ${renderFeedbackContent(submission)}
+    </div>
+  `;
+}
+
+function renderThreeDimensionFeedback(submission, scenarioCode) {
+  const analysis = getThreeDimensionFeedback(submission, scenarioCode);
+  return `
+    <div class="feedback-box feedback-box-dimension">
+      <div class="feedback-kicker">${icon("bulb")}三维建议</div>
+      <div class="dimension-list">
+        ${analysis.dimensions.map((item) => `
+          <section class="dimension-item">
+            <h5>${escapeHtml(item.title)}</h5>
+            <p>${escapeHtml(item.text)}</p>
+          </section>
+        `).join("")}
+      </div>
+      <p class="feedback-summary">${icon("chat")}<strong>综合建议：</strong>${escapeHtml(analysis.summary)}</p>
     </div>
   `;
 }
@@ -465,6 +586,220 @@ function renderFeedbackContent(submission) {
     </div>
     <p>${escapeHtml(submission.aiFeedback || "已提交。")}</p>
   `;
+}
+
+function getThreeDimensionFeedback(submission, scenarioCode) {
+  if (!submission) {
+    return {
+      dimensions: [
+        { title: "对策完整性", text: "提交方案后，这里会按关键动作给出第一组建议。" },
+        { title: "可行性", text: "提交方案后，这里会判断方案能否真正落地执行。" },
+        { title: "成本控制性", text: "提交方案后，这里会提示时间、费用和损失控制思路。" }
+      ],
+      summary: "先完成方案，再看结算宝给出的三维点评。"
+    };
+  }
+
+  const text = String(submission.content || "").replace(/\s+/g, "");
+  const rules = scenarioCode === "collection_crisis" ? getCollectionRules() : getLcRules();
+  const dimensions = rules.dimensions.map((item) => {
+    const matched = item.points.filter((point) => point.test(text));
+    const notes = matched.slice(0, 2).map((point) => `✓ ${point.note}`);
+    if (!notes.length) {
+      notes.push(`△ ${item.fallback}`);
+    } else if (matched.length < item.points.length) {
+      const missing = item.points.find((point) => !point.test(text));
+      if (missing?.missing) notes.push(`△ ${missing.missing}`);
+    }
+    return {
+      title: item.title,
+      text: notes.join(" ")
+    };
+  });
+
+  const strongCount = dimensions.reduce((sum, item) => sum + (item.text.includes("✓") ? 1 : 0), 0);
+  const summary = strongCount >= 3
+    ? `${rules.summaryGood} ${submission.aiFeedback || ""}`.trim()
+    : `${rules.summaryBase} ${submission.aiFeedback || ""}`.trim();
+
+  return { dimensions, summary: summary.slice(0, 120) };
+}
+
+function getCollectionRules() {
+  return {
+    summaryBase: "先稳住货权和证据链，再补强客户沟通与备选处置动作。",
+    summaryGood: "策略主线比较清楚，可以尽快落到货权、沟通和损失控制三步执行。",
+    dimensions: [
+      {
+        title: "对策完整性",
+        fallback: "可以再补上货权控制、客户沟通和备选买家这三类动作。",
+        points: [
+          {
+            test: (text) => /货权|提单|单据|物权/.test(text),
+            note: "提到了货权或单据控制。",
+            missing: "还可以补充货权在谁手里、如何防止货物失控。"
+          },
+          {
+            test: (text) => /客户|沟通|协商|催收|谈判/.test(text),
+            note: "提到了与客户协商或催收。",
+            missing: "建议再写清先沟通什么条件、争取什么结果。"
+          },
+          {
+            test: (text) => /转卖|转售|买家|保险|索赔|追偿/.test(text),
+            note: "考虑了转售、索赔或备选买家。",
+            missing: "可以补一个客户仍拒付时的备用处置方案。"
+          }
+        ]
+      },
+      {
+        title: "可行性",
+        fallback: "建议把先后顺序写清，例如先控货、再沟通、最后启动备选方案。",
+        points: [
+          {
+            test: (text) => /先|再|随后|第一|第二|第三/.test(text),
+            note: "已经体现出处理顺序。",
+            missing: "如果能写成分步骤执行，落地感会更强。"
+          },
+          {
+            test: (text) => /银行|托收行|代收行|承兑|付款/.test(text),
+            note: "考虑到了银行或收款环节。",
+            missing: "可再补一句银行、单据或付款节点怎么配合。"
+          },
+          {
+            test: (text) => /改单|换单|退运|仓储|转运/.test(text),
+            note: "提到了具体操作动作。",
+            missing: "建议补充一项可执行动作，避免方案停留在原则层面。"
+          }
+        ]
+      },
+      {
+        title: "成本控制性",
+        fallback: "可以补充降价、仓储、改运或索赔等损失控制办法。",
+        points: [
+          {
+            test: (text) => /降价|折扣|优惠|让利/.test(text),
+            note: "提到了价格让步或优惠交换。",
+            missing: "如果涉及让利，建议再说明换来什么回款保障。"
+          },
+          {
+            test: (text) => /费用|成本|损失|仓储|滞港|运费/.test(text),
+            note: "关注到了费用或损失控制。",
+            missing: "还可以补一句哪些费用最需要优先压住。"
+          },
+          {
+            test: (text) => /索赔|保险|追偿/.test(text),
+            note: "考虑了保险或索赔回收。",
+            missing: "可再想想能否用保险或追偿减少最终损失。"
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function getLcRules() {
+  return {
+    summaryBase: "先锁定不符点，再围绕改证、单据补救和银行沟通补强方案。",
+    summaryGood: "思路已经接近完整，可继续把不符点补救与费用承担写得更具体。",
+    dimensions: [
+      {
+        title: "对策完整性",
+        fallback: "建议至少覆盖不符点识别、改证补救和银行沟通三类动作。",
+        points: [
+          {
+            test: (text) => /不符|单据|单证|条款/.test(text),
+            note: "识别到了不符点或单证问题。",
+            missing: "可以再明确到底是哪一项单证或条款产生不符。"
+          },
+          {
+            test: (text) => /改证|修改信用证|修证|重开/.test(text),
+            note: "提到了改证或修改信用证。",
+            missing: "如果改证可行，建议写清由谁发起、改什么条款。"
+          },
+          {
+            test: (text) => /银行|开证行|议付行|通知行/.test(text),
+            note: "考虑了银行沟通环节。",
+            missing: "建议补上与开证行或议付行沟通的动作。"
+          }
+        ]
+      },
+      {
+        title: "可行性",
+        fallback: "建议写清先补证据还是先改证，处理顺序越明确越好。",
+        points: [
+          {
+            test: (text) => /港口|变更|苏哈尔|杰贝阿里|目的港/.test(text),
+            note: "抓到了港口变化这个核心问题。",
+            missing: "还可以补一句港口变更需要哪些佐证文件。"
+          },
+          {
+            test: (text) => /证明|函|说明|确认|通知/.test(text),
+            note: "考虑了补充证明或书面说明。",
+            missing: "建议补一类证明文件，让方案更能落地。"
+          },
+          {
+            test: (text) => /先|再|随后|第一|第二|第三/.test(text),
+            note: "体现出了处理步骤。",
+            missing: "如果能分成先后步骤，执行感会更清楚。"
+          }
+        ]
+      },
+      {
+        title: "成本控制性",
+        fallback: "可以补充改证费、改单费、滞港费或让步成本由谁承担。",
+        points: [
+          {
+            test: (text) => /费用|成本|损失|改证费|改单费/.test(text),
+            note: "考虑到了改证或改单成本。",
+            missing: "建议明确哪些费用可能增加，谁来承担。"
+          },
+          {
+            test: (text) => /承担|分摊|协商|让步/.test(text),
+            note: "提到了费用承担或协商机制。",
+            missing: "可再补一句费用承担谈判的底线。"
+          },
+          {
+            test: (text) => /时间|尽快|时效|到港|出单/.test(text),
+            note: "关注到了时效和窗口期。",
+            missing: "建议再强调一下时间拖延可能带来的额外损失。"
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function initSpeechVoices() {
+  if (!("speechSynthesis" in window)) return;
+  cachedVoices = window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+  };
+}
+
+function getPreferredVoice() {
+  const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices();
+  const namedPriority = [
+    /Xiaoxiao/i,
+    /Xiaoyi/i,
+    /Xiaochen/i,
+    /Yaoyao/i,
+    /Tingting/i,
+    /Meijia/i,
+    /Mei/i,
+    /Huihui/i,
+    /Female.*Chinese/i,
+    /Female|Girl/i
+  ];
+  for (const pattern of namedPriority) {
+    const matched = voices.find((voice) => /zh/i.test(voice.lang) && pattern.test(voice.name));
+    if (matched) return matched;
+  }
+  return (
+    voices.find((voice) => /zh/i.test(voice.lang) && /(Xiao|Yao|Ting|Mei|Hui|Female|Girl)/i.test(voice.name)) ||
+    voices.find((voice) => /zh/i.test(voice.lang)) ||
+    null
+  );
 }
 
 function stageTwoKey() {

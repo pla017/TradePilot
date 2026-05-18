@@ -92,13 +92,6 @@ function renderScenarioStats(stats) {
           </div>
           <span>${item.submittedGroups}/${item.totalGroups}</span>
         </div>
-        <div class="stat-row">
-          <span>平均分</span>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${item.avgScore}%"></div>
-          </div>
-          <span>${item.avgScore}</span>
-        </div>
       `;
     })
     .join("");
@@ -129,7 +122,7 @@ function renderRiskBars(distribution) {
 
 function renderGroupProgress(groups) {
   if (!groups.length) {
-    dom.groupProgress.innerHTML = `<tr><td colspan="7">暂无小组数据。</td></tr>`;
+    dom.groupProgress.innerHTML = `<tr><td colspan="6">暂无小组数据。</td></tr>`;
     return;
   }
 
@@ -140,7 +133,6 @@ function renderGroupProgress(groups) {
         <td>${renderCheck(group.collection)}</td>
         <td>${renderCheck(group.lc)}</td>
         <td>${renderCheck(group.mixed)}</td>
-        <td>${group.avgScore || "-"}</td>
         <td>${renderEvaluationCell(group.selfAvg, group.selfCount)}</td>
         <td>${renderEvaluationCell(group.peerAvg, group.peerCount)}</td>
       </tr>
@@ -149,7 +141,7 @@ function renderGroupProgress(groups) {
 }
 
 function renderEvaluationCell(avg, count) {
-  return count ? `${avg}分 / ${count}条` : "-";
+  return count ? `${count}条` : "-";
 }
 
 function renderCheck(done) {
@@ -236,7 +228,7 @@ function renderRecentSubmissions(items) {
   dom.recentSubmissions.innerHTML = items
     .map((item) => `
       <article class="submission-item">
-        <strong>${escapeHtml(item.groupName)} · ${escapeHtml(item.scenarioTitle)} · ${Number(item.score || 0)}分</strong>
+        <strong>${escapeHtml(item.groupName)} · ${escapeHtml(item.scenarioTitle)}</strong>
         <p>${escapeHtml(truncate(item.content, 108))}</p>
       </article>
     `)
@@ -247,8 +239,8 @@ function renderEvaluations(items, summary) {
   const safeSummary = { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(summary || {}) };
 
   dom.evaluationSummary.innerHTML = `
-    <span>自评 ${safeSummary.selfCount || 0} 条 · 均分 ${safeSummary.selfAvg || "-"}</span>
-    <span>互评 ${safeSummary.peerCount || 0} 条 · 均分 ${safeSummary.peerAvg || "-"}</span>
+    <span>自评 ${safeSummary.selfCount || 0} 条</span>
+    <span>互评 ${safeSummary.peerCount || 0} 条</span>
   `;
 
   if (!items.length) {
@@ -263,7 +255,7 @@ function renderEvaluations(items, summary) {
         : `互评 · ${escapeHtml(item.groupName)} → ${escapeHtml(item.targetGroupName)}`;
       return `
         <article class="reflection-item evaluation-item">
-          <strong>${title} · ${Number(item.score || 0)}分</strong>
+          <strong>${title}</strong>
           <p>${escapeHtml(item.studentName)}：${escapeHtml(item.content)}</p>
         </article>
       `;

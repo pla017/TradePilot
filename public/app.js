@@ -25,11 +25,9 @@ const dom = {
   reflectionForm: document.querySelector("#reflectionForm"),
   reflectionContent: document.querySelector("#reflectionContent"),
   selfEvaluationForm: document.querySelector("#selfEvaluationForm"),
-  selfScore: document.querySelector("#selfScore"),
   selfEvaluationContent: document.querySelector("#selfEvaluationContent"),
   peerEvaluationForm: document.querySelector("#peerEvaluationForm"),
   peerTargetGroup: document.querySelector("#peerTargetGroup"),
-  peerScore: document.querySelector("#peerScore"),
   peerEvaluationContent: document.querySelector("#peerEvaluationContent"),
   aiQuestion: document.querySelector("#aiQuestion"),
   askAiBtn: document.querySelector("#askAiBtn"),
@@ -206,7 +204,7 @@ function renderStageTwo() {
   const mixed = getSubmission("mixed_payment");
   const open = localStorage.getItem(stageTwoKey()) === "open" || Boolean(mixed);
   dom.stageTwo.hidden = !open;
-  dom.stageTwoStatus.textContent = mixed ? `已提交，评分 ${mixed.score}` : "未提交";
+  dom.stageTwoStatus.textContent = mixed ? "已提交" : "未提交";
   dom.stageTwoStatus.classList.toggle("done", Boolean(mixed));
   dom.railStageTwo.textContent = mixed ? "第二阶段已完成" : open ? "第二阶段进行中" : "第二阶段待解锁";
   dom.railStageTwo.classList.toggle("active", open);
@@ -291,7 +289,6 @@ async function handleSelfEvaluationSubmit(event) {
   event.preventDefault();
   await submitEvaluation({
     type: "self",
-    score: dom.selfScore.value,
     content: dom.selfEvaluationContent.value.trim(),
     button: dom.selfEvaluationForm.querySelector("button"),
     onSuccess: () => {
@@ -306,7 +303,6 @@ async function handlePeerEvaluationSubmit(event) {
   await submitEvaluation({
     type: "peer",
     targetGroupId: dom.peerTargetGroup.value,
-    score: dom.peerScore.value,
     content: dom.peerEvaluationContent.value.trim(),
     button: dom.peerEvaluationForm.querySelector("button"),
     onSuccess: () => {
@@ -316,7 +312,7 @@ async function handlePeerEvaluationSubmit(event) {
   });
 }
 
-async function submitEvaluation({ type, targetGroupId, score, content, button, onSuccess }) {
+async function submitEvaluation({ type, targetGroupId, content, button, onSuccess }) {
   const studentId = dom.studentSelect.value;
   const student = state.students.find((item) => item.id === studentId);
   if (!student) {
@@ -339,7 +335,6 @@ async function submitEvaluation({ type, targetGroupId, score, content, button, o
         groupId: selectedGroupId,
         studentId,
         targetGroupId,
-        score,
         content
       }
     });
@@ -582,7 +577,6 @@ function renderFeedbackContent(submission) {
   return `
     <div class="score-line">
       <span>智能反馈</span>
-      <span>评分 ${Number(submission.score || 0)}</span>
     </div>
     <p>${escapeHtml(submission.aiFeedback || "已提交。")}</p>
   `;
@@ -602,14 +596,12 @@ function getThreeDimensionFeedback(submission, scenarioCode) {
 
   const text = String(submission.content || "").replace(/\s+/g, "");
   const rules = scenarioCode === "collection_crisis" ? getCollectionRules() : getLcRules();
+  const complete = rules.isComplete(text);
   const dimensions = rules.dimensions.map((item) => {
     const matched = item.points.filter((point) => point.test(text));
-    const notes = matched.slice(0, 2).map((point) => `✓ ${point.note}`);
+    const notes = matched.map((point) => `✓ ${point.note}`);
     if (!notes.length) {
       notes.push(`△ ${item.fallback}`);
-    } else if (matched.length < item.points.length) {
-      const missing = item.points.find((point) => !point.test(text));
-      if (missing?.missing) notes.push(`△ ${missing.missing}`);
     }
     return {
       title: item.title,
@@ -617,8 +609,7 @@ function getThreeDimensionFeedback(submission, scenarioCode) {
     };
   });
 
-  const strongCount = dimensions.reduce((sum, item) => sum + (item.text.includes("✓") ? 1 : 0), 0);
-  const summary = strongCount >= 3
+  const summary = complete
     ? `${rules.summaryGood} ${submission.aiFeedback || ""}`.trim()
     : `${rules.summaryBase} ${submission.aiFeedback || ""}`.trim();
 
@@ -626,70 +617,51 @@ function getThreeDimensionFeedback(submission, scenarioCode) {
 }
 
 function getCollectionRules() {
+  const hasDiscount = (text) => /降价|折扣|优惠|让利|减价|价格/.test(text);
+  const hasResale = (text) => /转售|转卖|他国|其他国家|第三国|另找买家|其他买家/.test(text);
+  const hasReturn = (text) => /退运|退货回国|运回国|退回国内|返回国内/.test(text);
+  const isComplete = (text) => hasDiscount(text) && hasResale(text) && hasReturn(text);
+
   return {
-    summaryBase: "先稳住货权和证据链，再补强客户沟通与备选处置动作。",
-    summaryGood: "策略主线比较清楚，可以尽快落到货权、沟通和损失控制三步执行。",
+    isComplete,
+    summaryBase: "托收对策按三条核对：协商降价促成履约、转售他国、退运回国。",
+    summaryGood: "托收三项处理对策已覆盖完整。",
     dimensions: [
       {
         title: "对策完整性",
-        fallback: "可以再补上货权控制、客户沟通和备选买家这三类动作。",
+        fallback: "完整对策应包含：协商降价促成履约、将货物转售他国、安排货物退运回国。",
         points: [
           {
-            test: (text) => /货权|提单|单据|物权/.test(text),
-            note: "提到了货权或单据控制。",
-            missing: "还可以补充货权在谁手里、如何防止货物失控。"
+            test: hasDiscount,
+            note: "写到了协商降价促成履约。"
           },
           {
-            test: (text) => /客户|沟通|协商|催收|谈判/.test(text),
-            note: "提到了与客户协商或催收。",
-            missing: "建议再写清先沟通什么条件、争取什么结果。"
+            test: hasResale,
+            note: "写到了将货物转售他国。"
           },
           {
-            test: (text) => /转卖|转售|买家|保险|索赔|追偿/.test(text),
-            note: "考虑了转售、索赔或备选买家。",
-            missing: "可以补一个客户仍拒付时的备用处置方案。"
+            test: hasReturn,
+            note: "写到了安排货物退运回国。"
           }
         ]
       },
       {
         title: "可行性",
-        fallback: "建议把先后顺序写清，例如先控货、再沟通、最后启动备选方案。",
+        fallback: "处理路径应覆盖继续履约、替代销售、退运兜底三种选择。",
         points: [
           {
-            test: (text) => /先|再|随后|第一|第二|第三/.test(text),
-            note: "已经体现出处理顺序。",
-            missing: "如果能写成分步骤执行，落地感会更强。"
-          },
-          {
-            test: (text) => /银行|托收行|代收行|承兑|付款/.test(text),
-            note: "考虑到了银行或收款环节。",
-            missing: "可再补一句银行、单据或付款节点怎么配合。"
-          },
-          {
-            test: (text) => /改单|换单|退运|仓储|转运/.test(text),
-            note: "提到了具体操作动作。",
-            missing: "建议补充一项可执行动作，避免方案停留在原则层面。"
+            test: isComplete,
+            note: "三条处理路径完整，能覆盖主要处置选择。"
           }
         ]
       },
       {
         title: "成本控制性",
-        fallback: "可以补充降价、仓储、改运或索赔等损失控制办法。",
+        fallback: "成本控制重点看降价履约、转售止损、退运止损是否都写到。",
         points: [
           {
-            test: (text) => /降价|折扣|优惠|让利/.test(text),
-            note: "提到了价格让步或优惠交换。",
-            missing: "如果涉及让利，建议再说明换来什么回款保障。"
-          },
-          {
-            test: (text) => /费用|成本|损失|仓储|滞港|运费/.test(text),
-            note: "关注到了费用或损失控制。",
-            missing: "还可以补一句哪些费用最需要优先压住。"
-          },
-          {
-            test: (text) => /索赔|保险|追偿/.test(text),
-            note: "考虑了保险或索赔回收。",
-            missing: "可再想想能否用保险或追偿减少最终损失。"
+            test: isComplete,
+            note: "已覆盖降价、转售、退运三种损失控制方式。"
           }
         ]
       }
@@ -698,70 +670,52 @@ function getCollectionRules() {
 }
 
 function getLcRules() {
+  const hasAmend = (text) => /改证|修改信用证|修证|修改L\/?C|更改信用证/.test(text);
+  const hasShundaCost = (text) => /顺达|我方|卖方|工贸/.test(text) && /费用|承担|改证费|成本/.test(text);
+  const hasBuyDocs = (text) => /买单|接受不符点|接受单据|接受单证|付款赎单/.test(text);
+  const hasDiscount = (text) => /降价|折扣|优惠|让利|减价|价格/.test(text);
+  const isComplete = (text) => hasAmend(text) && hasShundaCost(text) && hasBuyDocs(text) && hasDiscount(text);
+
   return {
-    summaryBase: "先锁定不符点，再围绕改证、单据补救和银行沟通补强方案。",
-    summaryGood: "思路已经接近完整，可继续把不符点补救与费用承担写得更具体。",
+    isComplete,
+    summaryBase: "信用证对策按两条核对：协商修改信用证且改证费用由顺达工贸承担；协商买单并给予买方降价优惠。",
+    summaryGood: "信用证两项处理对策已覆盖完整。",
     dimensions: [
       {
         title: "对策完整性",
-        fallback: "建议至少覆盖不符点识别、改证补救和银行沟通三类动作。",
+        fallback: "完整对策应包含：协商修改信用证、协商买单并给予买方降价优惠。",
         points: [
           {
-            test: (text) => /不符|单据|单证|条款/.test(text),
-            note: "识别到了不符点或单证问题。",
-            missing: "可以再明确到底是哪一项单证或条款产生不符。"
+            test: hasAmend,
+            note: "写到了协商修改信用证。"
           },
           {
-            test: (text) => /改证|修改信用证|修证|重开/.test(text),
-            note: "提到了改证或修改信用证。",
-            missing: "如果改证可行，建议写清由谁发起、改什么条款。"
-          },
-          {
-            test: (text) => /银行|开证行|议付行|通知行/.test(text),
-            note: "考虑了银行沟通环节。",
-            missing: "建议补上与开证行或议付行沟通的动作。"
+            test: (text) => hasBuyDocs(text) && hasDiscount(text),
+            note: "写到了协商买单并给予买方降价优惠。"
           }
         ]
       },
       {
         title: "可行性",
-        fallback: "建议写清先补证据还是先改证，处理顺序越明确越好。",
+        fallback: "可行方案应同时覆盖改证处理和买单优惠处理。",
         points: [
           {
-            test: (text) => /港口|变更|苏哈尔|杰贝阿里|目的港/.test(text),
-            note: "抓到了港口变化这个核心问题。",
-            missing: "还可以补一句港口变更需要哪些佐证文件。"
-          },
-          {
-            test: (text) => /证明|函|说明|确认|通知/.test(text),
-            note: "考虑了补充证明或书面说明。",
-            missing: "建议补一类证明文件，让方案更能落地。"
-          },
-          {
-            test: (text) => /先|再|随后|第一|第二|第三/.test(text),
-            note: "体现出了处理步骤。",
-            missing: "如果能分成先后步骤，执行感会更清楚。"
+            test: isComplete,
+            note: "两条处理路径完整，能够覆盖改证和买单两种处置。"
           }
         ]
       },
       {
         title: "成本控制性",
-        fallback: "可以补充改证费、改单费、滞港费或让步成本由谁承担。",
+        fallback: "成本控制重点看改证费用承担和买方降价优惠是否写清。",
         points: [
           {
-            test: (text) => /费用|成本|损失|改证费|改单费/.test(text),
-            note: "考虑到了改证或改单成本。",
-            missing: "建议明确哪些费用可能增加，谁来承担。"
+            test: hasShundaCost,
+            note: "写到了改证费用由顺达工贸承担。"
           },
           {
-            test: (text) => /承担|分摊|协商|让步/.test(text),
-            note: "提到了费用承担或协商机制。",
-            missing: "可再补一句费用承担谈判的底线。"
-          },
-          {
-            test: (text) => /时间|尽快|时效|到港|出单/.test(text),
-            note: "关注到了时效和窗口期。",
-            missing: "建议再强调一下时间拖延可能带来的额外损失。"
+            test: hasDiscount,
+            note: "写到了给予买方降价优惠。"
           }
         ]
       }

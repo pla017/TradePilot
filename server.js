@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 await loadLocalEnv();
 
 const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "127.0.0.1";
 const DATA_DIR = process.env.TRADEPILOT_DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "tradepilot.sqlite");
 const SEED_FILE = process.env.TRADEPILOT_SEED_FILE || path.join(__dirname, "data", "db.json");
@@ -146,9 +147,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`TradePilot classroom app is running at http://127.0.0.1:${PORT}`);
-  console.log(`Dashboard: http://127.0.0.1:${PORT}/dashboard`);
+server.listen(PORT, HOST, () => {
+  const displayHost = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
+  console.log(`TradePilot classroom app is running at http://${displayHost}:${PORT}`);
+  console.log(`Dashboard: http://${displayHost}:${PORT}/dashboard`);
 });
 
 async function loadLocalEnv() {
@@ -660,9 +662,6 @@ async function handleEvaluation(body, res) {
       return { error: "互评请选择其他小组。", status: 400 };
     }
 
-    const score = Math.max(1, Math.min(5, Number(body.score || 0)));
-    if (!Number.isFinite(score) || score < 1) return { error: "请选择1-5分评价。", status: 400 };
-
     const content = String(body.content || "").trim();
     if (content.length < 4) return { error: "请写下评价理由。", status: 400 };
 
@@ -673,7 +672,7 @@ async function handleEvaluation(body, res) {
       studentId: student.id,
       studentName: student.name,
       targetGroupId,
-      score,
+      score: 0,
       content,
       createdAt: new Date().toISOString()
     };
@@ -848,18 +847,68 @@ function scoreSubmission(code, content, body) {
     return scoreMixedPayment(content, body);
   }
 
-  const keywordScore = countMatches(content, [
-    "货权", "单据", "沟通", "保险", "银行", "客户", "风险", "证据", "转售", "协商",
-    "改单", "开证行", "不符", "港口", "拒付"
-  ]);
-  const lengthScore = Math.min(35, Math.floor(content.length / 6));
-  const score = Math.min(92, 45 + lengthScore + keywordScore * 4);
-  const feedback =
-    code === "collection_crisis"
-      ? "已收到方案。再想想：货权还能否控制？客户拒付后的备选买家、单据和沟通证据是否完整？"
-      : "已收到方案。再检查：不符点能否补救？改单、银行沟通和目的港变化的证据链是否清楚？";
+  if (code === "collection_crisis") {
+    return scoreCollectionCrisis(content);
+  }
 
-  return { score, feedback, riskLevel: null };
+  if (code === "lc_crisis") {
+    return scoreLcCrisis(content);
+  }
+
+  return { score: 70, feedback: "已收到方案。", riskLevel: null };
+}
+
+function scoreCollectionCrisis(content) {
+  const text = compactText(content);
+  const checks = [
+    /降价|折扣|优惠|让利|减价|价格/.test(text),
+    /转售|转卖|他国|其他国家|第三国|另找买家|其他买家/.test(text),
+    /退运|退货回国|运回国|退回国内|返回国内/.test(text)
+  ];
+  const passed = checks.filter(Boolean).length;
+
+  if (passed === 3) {
+    return {
+      score: 96,
+      feedback: "托收收汇危机三项处理对策已完整：协商降价促成履约、转售他国、退运回国。",
+      riskLevel: null
+    };
+  }
+
+  const score = 55 + passed * 12 + Math.min(8, Math.floor(text.length / 18));
+  return {
+    score: Math.min(score, 88),
+    feedback: "托收对策请按三条补齐：协商降价促成履约、将货物转售他国、安排货物退运回国。",
+    riskLevel: null
+  };
+}
+
+function scoreLcCrisis(content) {
+  const text = compactText(content);
+  const hasAmend = /改证|修改信用证|修证|修改L\/?C|更改信用证/.test(text);
+  const hasShundaCost = /顺达|我方|卖方|工贸/.test(text) && /费用|承担|改证费|成本/.test(text);
+  const hasBuyDocs = /买单|接受不符点|接受单据|接受单证|付款赎单/.test(text);
+  const hasDiscount = /降价|折扣|优惠|让利|减价|价格/.test(text);
+  const passed = [hasAmend, hasShundaCost, hasBuyDocs, hasDiscount].filter(Boolean).length;
+
+  if (hasAmend && hasShundaCost && hasBuyDocs && hasDiscount) {
+    return {
+      score: 96,
+      feedback: "信用证收汇危机两项处理对策已完整：协商修改信用证并由顺达工贸承担改证费用；协商买单并给予买方降价优惠。",
+      riskLevel: null
+    };
+  }
+
+  const score = 54 + passed * 10 + Math.min(8, Math.floor(text.length / 18));
+  return {
+    score: Math.min(score, 88),
+    feedback: "信用证对策请按两条补齐：协商修改信用证且改证费用由顺达工贸承担；协商买单并给予买方降价优惠。",
+    riskLevel: null
+  };
+}
+
+function compactText(value) {
+  return String(value || "").replace(/\s+/g, "");
 }
 
 function scoreMixedPayment(content, body) {

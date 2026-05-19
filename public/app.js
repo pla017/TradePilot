@@ -406,8 +406,10 @@ function renderStageTwo() {
 
   if (mixed) {
     dom.mixedFeedback.hidden = false;
-    dom.mixedFeedback.innerHTML = renderFeedbackContent(mixed);
+    dom.mixedFeedback.className = "feedback-box feedback-box-dimension feedback-box-mixed";
+    dom.mixedFeedback.innerHTML = renderMixedDimensionFeedback(mixed);
   } else {
+    dom.mixedFeedback.className = "feedback-box";
     dom.mixedFeedback.hidden = true;
   }
 }
@@ -815,15 +817,14 @@ function speak(text, options = {}) {
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   const preferredVoice = getPreferredVoice();
+  const playfulVoice = isPlayfulVoice(preferredVoice);
   utterance.voice = preferredVoice;
   utterance.lang = "zh-CN";
-  utterance.rate = 1.02;
-  utterance.pitch = preferredVoice?.name && /Xiaoxiao|Xiaochen|Xiaoyi|Yaoyao|Tingting|Meijia|Female|Girl/i.test(preferredVoice.name)
-    ? 1.68
-    : 1.48;
+  utterance.rate = playfulVoice ? 1.1 : 1.04;
+  utterance.pitch = playfulVoice ? 1.85 : 1.62;
   utterance.volume = 1;
   if (!preferredVoice && !options.silent) {
-    showToast("当前浏览器未发现理想女声音色，已使用系统中文语音。");
+    showToast("当前浏览器未发现理想卡通女声，已使用系统中文女声。");
   }
   window.speechSynthesis.speak(utterance);
 }
@@ -881,6 +882,13 @@ function renderFeedback(submission, scenarioCode = "") {
   if (scenarioCode === "collection_crisis" || scenarioCode === "lc_crisis") {
     return renderThreeDimensionFeedback(submission, scenarioCode);
   }
+  if (scenarioCode === "mixed_payment") {
+    return `
+      <div class="feedback-box feedback-box-dimension feedback-box-mixed">
+        ${renderMixedDimensionFeedback(submission)}
+      </div>
+    `;
+  }
   return `
     <div class="feedback-box">
       <h4>点评维度 & 智能反馈</h4>
@@ -905,6 +913,29 @@ function renderThreeDimensionFeedback(submission, scenarioCode) {
       </div>
       <p class="feedback-summary">${icon("chat")}<strong>综合建议：</strong>${escapeHtml(analysis.summary)}</p>
     </div>
+  `;
+}
+
+function renderMixedDimensionFeedback(submission) {
+  const analysis = getMixedPaymentDimensionFeedback(submission);
+  return `
+    <h4>点评维度 & 智能反馈</h4>
+    <div class="dimension-list mixed-dimension-list">
+      ${analysis.dimensions.map((item) => `
+        <section class="dimension-item mixed-dimension-item">
+          <div class="mixed-dimension-head">
+            <h5>${escapeHtml(item.title)}</h5>
+            <strong class="mixed-dimension-score">${item.score}/10</strong>
+          </div>
+          <div class="mixed-dimension-track">
+            <div class="mixed-dimension-fill" style="width:${item.score * 10}%"></div>
+          </div>
+          <p class="mixed-dimension-note">${escapeHtml(item.text)}</p>
+        </section>
+      `).join("")}
+    </div>
+    <p class="feedback-summary">${icon("bulb")}<strong>综合建议：</strong>${escapeHtml(analysis.summary)}</p>
+    <p class="mixed-feedback-footer">${icon("chat")}完成风险评估与策略设计后获取点评</p>
   `;
 }
 
@@ -956,6 +987,192 @@ function getThreeDimensionFeedback(submission, scenarioCode) {
     : `${rules.summaryBase} ${submission.aiFeedback || ""}`.trim();
 
   return { dimensions, summary: summary.slice(0, 120) };
+}
+
+function getMixedPaymentDimensionFeedback(submission) {
+  if (!submission) {
+    return {
+      dimensions: [
+        { title: "① 交易风险等级评估正确性", score: 0, text: "提交混合支付策略后，这里会判断你写出的风险等级是否与评估结果一致。" },
+        { title: "② 混合支付策略与交易风险的匹配度", score: 0, text: "提交后会判断付款组合和百分比是否与客户风险、国家风险相匹配。" },
+        { title: "③ 混合支付策略多元性", score: 0, text: "提交后会提示是否形成了至少两种以上支付工具的组合。" }
+      ],
+      summary: "先写出风险等级，再补充付款工具和百分比，系统才会给出分维度反馈。"
+    };
+  }
+
+  const text = `${submission.content || ""} ${submission.paymentStrategy || ""}`.replace(/\s+/g, "");
+  const riskLevel = submission.riskLevel || inferRiskLevelFromText(text) || "low";
+  const mentionedRisk = inferRiskLevelFromText(text);
+  const hasAdvance = /预付款|预付|订金|定金/.test(text);
+  const hasCollection = /托收|D\/P|D\/A/i.test(text);
+  const hasLc = /信用证|L\/C|LC/i.test(text);
+  const methodCount = [hasAdvance, hasCollection, hasLc].filter(Boolean).length;
+  const hasPercentages = /%|％|百分之|[一二三四五六七八九十两]成/.test(text);
+  const has20 = /20%|20％|百分之二十|两成/.test(text);
+  const has30OrMoreAdvance = /30%|30％|40%|40％|50%|50％|60%|60％|70%|70％|百分之三十|百分之四十|百分之五十|百分之六十|百分之七十|三成|四成|五成|六成|七成/.test(text);
+  const has80 = /80%|80％|百分之八十|八成/.test(text);
+
+  const riskDimension = buildMixedRiskDimension(mentionedRisk, riskLevel);
+  const matchDimension = buildMixedMatchDimension({
+    riskLevel,
+    hasAdvance,
+    hasCollection,
+    hasLc,
+    hasPercentages,
+    has20,
+    has80,
+    has30OrMoreAdvance,
+    methodCount
+  });
+  const diversityDimension = buildMixedDiversityDimension(methodCount, hasPercentages, hasAdvance, hasCollection, hasLc);
+
+  const dimensions = [riskDimension, matchDimension, diversityDimension];
+  const average = Number((dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length).toFixed(1));
+  const summary = average >= 8
+    ? `策略设计较完整。${submission.aiFeedback || "可以继续补充各支付工具分别覆盖哪些风险。"}`
+    : average >= 5
+      ? `策略还有优化空间。${submission.aiFeedback || "建议再核对风险等级，并优化各支付工具比例。"}`
+      : `策略需要改进。${submission.aiFeedback || "请先确认风险等级，再让预付款、信用证、托收的比例与风险相匹配。"}`
+  ;
+
+  return { dimensions, summary: summary.slice(0, 120) };
+}
+
+function buildMixedRiskDimension(mentionedRisk, expectedRisk) {
+  const expectedLabel = riskLevelLabel(expectedRisk);
+  if (!mentionedRisk) {
+    return {
+      title: "① 交易风险等级评估正确性",
+      score: 0,
+      text: `未写出风险等级。请先明确判断为${expectedLabel}，再继续设计支付方案。`
+    };
+  }
+
+  if (mentionedRisk === expectedRisk) {
+    return {
+      title: "① 交易风险等级评估正确性",
+      score: 10,
+      text: `风险等级判断正确。你写出的${riskLevelLabel(mentionedRisk)}与系统评估一致。`
+    };
+  }
+
+  return {
+    title: "① 交易风险等级评估正确性",
+    score: 3,
+    text: `风险等级判断偏差。当前更接近${expectedLabel}，请先统一风险判断后再设计支付比例。`
+  };
+}
+
+function buildMixedMatchDimension({ riskLevel, hasAdvance, hasCollection, hasLc, hasPercentages, has20, has80, has30OrMoreAdvance, methodCount }) {
+  let score = 0;
+  let text = "";
+
+  if (riskLevel === "low") {
+    if (hasAdvance && hasCollection && hasPercentages && has20 && has80) {
+      score = 10;
+      text = "匹配度较高。低风险交易采用20%预付款加80%托收，思路较合理。";
+    } else if (hasAdvance && (hasCollection || hasLc) && hasPercentages) {
+      score = 8;
+      text = "匹配度较好。低风险客户可以采用预付款加托收/信用证组合，再把比例写得更清楚。";
+    } else if (methodCount >= 2) {
+      score = 5;
+      text = "匹配度一般。已出现组合思路，但还需要补足具体比例和低风险下的成本考虑。";
+    } else {
+      score = 2;
+      text = "匹配度较低。低风险场景通常不需要过重保障，建议补充预付款与托收的组合思路。";
+    }
+  } else if (riskLevel === "medium") {
+    if (hasAdvance && hasLc && hasPercentages) {
+      score = 10;
+      text = "匹配度较高。中风险交易提高了保障强度，预付款和信用证组合较稳。";
+    } else if (hasLc && hasCollection && hasPercentages) {
+      score = 8;
+      text = "匹配度较好。中风险下加入信用证是对的，再明确比例并减少托收占比会更稳。";
+    } else if (methodCount >= 2) {
+      score = 6;
+      text = "匹配度一般。已尝试做组合，但中风险建议适度提升预付款或信用证占比，减少托收。";
+    } else {
+      score = 2;
+      text = "匹配度较低。明显偏离原则，请重新设计支付比例。中风险应适度提升预付款或信用证占比。";
+    }
+  } else {
+    if (hasAdvance && hasLc && hasPercentages && has30OrMoreAdvance) {
+      score = 10;
+      text = "匹配度较高。高风险下提高预付款并配合信用证，保障强度较足。";
+    } else if (hasAdvance && hasLc) {
+      score = 8;
+      text = "匹配度较好。高风险方向正确，再把预付款比例写高一些会更稳。";
+    } else if (methodCount >= 2) {
+      score = 4;
+      text = "匹配度偏低。高风险交易不宜依赖托收，建议提高预付款和信用证比重。";
+    } else {
+      score = 1;
+      text = "匹配度很低。高风险交易应优先用高比例预付款配合信用证，不建议单一支付方式。";
+    }
+  }
+
+  return {
+    title: "② 混合支付策略与交易风险的匹配度",
+    score,
+    text
+  };
+}
+
+function buildMixedDiversityDimension(methodCount, hasPercentages, hasAdvance, hasCollection, hasLc) {
+  const methods = [
+    hasAdvance ? "预付款" : "",
+    hasLc ? "信用证" : "",
+    hasCollection ? "托收" : ""
+  ].filter(Boolean);
+
+  if (methodCount >= 3 && hasPercentages) {
+    return {
+      title: "③ 混合支付策略多元性",
+      score: 10,
+      text: `支付工具较丰富，已组合${methods.join("、")}，且写出了比例。`
+    };
+  }
+  if (methodCount === 2 && hasPercentages) {
+    return {
+      title: "③ 混合支付策略多元性",
+      score: 8,
+      text: `已形成双工具组合（${methods.join(" + ")}），多元性较好。`
+    };
+  }
+  if (methodCount === 2) {
+    return {
+      title: "③ 混合支付策略多元性",
+      score: 6,
+      text: `支付工具已有组合（${methods.join(" + ")}），但还缺少清晰比例。`
+    };
+  }
+  if (methodCount === 1) {
+    return {
+      title: "③ 混合支付策略多元性",
+      score: 2,
+      text: `目前只出现${methods[0]}，还没有形成真正的混合支付组合。`
+    };
+  }
+
+  return {
+    title: "③ 混合支付策略多元性",
+    score: 0,
+    text: "未识别到有效组合。建议至少写出两种支付工具及对应比例。"
+  };
+}
+
+function inferRiskLevelFromText(text) {
+  if (/高风险/.test(text)) return "high";
+  if (/中风险/.test(text)) return "medium";
+  if (/低风险/.test(text)) return "low";
+  return "";
+}
+
+function riskLevelLabel(level) {
+  if (level === "high") return "高风险";
+  if (level === "medium") return "中风险";
+  return "低风险";
 }
 
 function getCollectionRules() {
@@ -1076,12 +1293,22 @@ function initSpeechVoices() {
 function getPreferredVoice() {
   const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices();
   const namedPriority = [
-    /Xiaoxiao/i,
     /Xiaoyi/i,
-    /Xiaochen/i,
     /Yaoyao/i,
-    /Tingting/i,
+    /Xiaoxiao/i,
+    /Xiaochen/i,
     /Meijia/i,
+    /Tingting/i,
+    /SiuMai/i,
+    /HiuMaan/i,
+    /Airi/i,
+    /Nanami/i,
+    /Girl/i,
+    /Cute/i,
+    /Female/i,
+    /Child/i,
+    /少女|小艺|晓晓|晓辰|瑶瑶|美嘉|婷婷/i,
+    /Xiaoxiao/i,
     /Mei/i,
     /Huihui/i,
     /Female.*Chinese/i,
@@ -1092,10 +1319,17 @@ function getPreferredVoice() {
     if (matched) return matched;
   }
   return (
+    voices.find((voice) => /zh/i.test(voice.lang) && isPlayfulVoice(voice)) ||
     voices.find((voice) => /zh/i.test(voice.lang) && /(Xiao|Yao|Ting|Mei|Hui|Female|Girl)/i.test(voice.name)) ||
+    voices.find((voice) => /zh/i.test(voice.lang) && /female/i.test(`${voice.name} ${voice.voiceURI || ""}`)) ||
     voices.find((voice) => /zh/i.test(voice.lang)) ||
     null
   );
+}
+
+function isPlayfulVoice(voice) {
+  const signature = `${voice?.name || ""} ${voice?.voiceURI || ""}`;
+  return /Xiaoyi|Yaoyao|Xiaoxiao|Xiaochen|Meijia|Tingting|Girl|Cute|Child|Female|少女|小艺|晓晓|晓辰|瑶瑶|美嘉|婷婷/i.test(signature);
 }
 
 function stageTwoKey() {

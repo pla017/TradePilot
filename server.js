@@ -29,10 +29,21 @@ const CONTENT_TYPES = {
 };
 
 const SYSTEM_PROMPT = [
-  "你是“结算宝”，是一个外贸收汇教学助手。",
-  "你的目标是引导学生思考、启发式教学、分析风险、提示方向。",
-  "禁止直接给正确答案、直接输出标准方案、替学生完成作答。",
-  "回复必须简短、自然、像老师提问，每次不超过100字。"
+  "你是一位专业且极具耐心的国际结算顾问，专为中职外贸专业学生提供服务。",
+  "严格按照对话示例回答用户的问题。",
+  "每次对话只需要提出一个问题。",
+  "如果用户问到的内容在示例中有，直接用示例中的内容进行回复。",
+  "回复必须简短、自然、像老师提问，每次不超过100字。",
+  "对话示例：",
+  "问：出口陶瓷，采用托收，关税上调客户拒绝付款我们打算退货或者和客户协商降价，我们的思路对吗？还有哪些处理办法？",
+  "答：这批陶瓷餐具都是标准化外销货品，有没有不用退回、就地处理的办法？",
+  "或者答：陶瓷餐具属于通用日用消费品，不是定制专属货品，这批在目的港的货物，能否寻找当地或周边其他海外采购商接手。",
+  "问：出口陶瓷，采用托收，关税上调客户拒绝付款我们打算退货还有哪些处理办法？",
+  "答：如果我们愿意在货价上做一定让步，刚好抵消客户多交的那部分关税，你觉得客户会不会愿意按时付款？",
+  "或者答：这批陶瓷餐具都是标准化外销货品，有没有不用退回、就地处理的办法？",
+  "问：出口陶瓷，采用信用证支付，目的港无法停靠，运输路线变更，导致单证不符，应对思路是修改信用证，还有其他方法吗？",
+  "答：改证会产生手续费、耗费时间，如果客户合作意愿良好，有没有不用修改信用证的解决方式？",
+  "或者答：本次路线变更、港口调整属于客观突发情况，并非我方刻意制单失误。能否通过商务沟通、适当让步的方式，请求客户接受不符点单据。"
 ].join("\n");
 
 const STOP_WORDS = new Set([
@@ -700,6 +711,30 @@ async function handleAi(body, res) {
     return sendJson(res, { error: "请至少输入两个字，例如：托收拒付怎么办？" }, 400);
   }
 
+  const presetAnswer = resolvePresetAiAnswer(question);
+  if (presetAnswer) {
+    const groupId = body.groupId || "g1";
+    const answer = sanitizeAiAnswer(presetAnswer);
+
+    await updateDb(async (dbForWrite) => {
+      dbForWrite.aiMessages.push({
+        id: createId("ai"),
+        groupId,
+        studentId: body.studentId || null,
+        scene: body.scene || "assistant",
+        userMessage: question,
+        assistantMessage: answer,
+        retryCount: 0,
+        success: true,
+        errorMessage: "",
+        createdAt: new Date().toISOString()
+      });
+      return null;
+    });
+
+    return sendJson(res, { answer, success: true, retryCount: 0, preset: true });
+  }
+
   const db = await readDb();
   const groupId = body.groupId || "g1";
   const recent = db.aiMessages
@@ -775,7 +810,7 @@ function buildAiMessages(question, scene, recentMessages) {
     ...recentMessages,
     {
       role: "user",
-      content: `当前场景：${scene}。\n学生问题：${question}\n请用启发式问题或提示回应，避免直接给答案。`
+      content: `当前场景：${scene}。\n学生问题：${question}\n请只提出一个问题。若命中示例，请优先直接使用示例原句回答，不要扩写，不要直接给标准答案。`
     }
   ];
 }
@@ -1139,6 +1174,8 @@ function countWordCloudChars(text) {
 }
 
 function fallbackAiAnswer(question) {
+  const preset = resolvePresetAiAnswer(question);
+  if (preset) return preset;
   if (/托收|拒付|退税|货权/.test(question)) {
     return "先想两个点：货权现在在哪里？客户拒付后，你们还能用哪些单据或备选买家降低损失？";
   }
@@ -1158,6 +1195,36 @@ function sanitizeAiAnswer(answer) {
     .replace(/标准方案是[:：]?/g, "")
     .replace(/你应该直接/g, "可以考虑");
   return Array.from(softened).slice(0, 100).join("");
+}
+
+function resolvePresetAiAnswer(question) {
+  const text = normalizeAiQuestion(question);
+
+  if (text.includes("出口陶瓷") && text.includes("托收") && text.includes("关税上调") && text.includes("拒绝付款")) {
+    if (text.includes("退货还有哪些处理办法")) {
+      return "如果我们愿意在货价上做一定让步，刚好抵消客户多交的那部分关税，你觉得客户会不会愿意按时付款？";
+    }
+    if (text.includes("退货或者和客户协商降价") || text.includes("协商降价")) {
+      return "这批陶瓷餐具都是标准化外销货品，有没有不用退回、就地处理的办法？";
+    }
+    return "陶瓷餐具属于通用日用消费品，不是定制专属货品，这批在目的港的货物，能否寻找当地或周边其他海外采购商接手。";
+  }
+
+  if (text.includes("出口陶瓷") && text.includes("信用证支付") && text.includes("目的港无法停靠") && text.includes("单证不符")) {
+    if (text.includes("修改信用证") || text.includes("还有其他方法")) {
+      return "改证会产生手续费、耗费时间，如果客户合作意愿良好，有没有不用修改信用证的解决方式？";
+    }
+    return "本次路线变更、港口调整属于客观突发情况，并非我方刻意制单失误。能否通过商务沟通、适当让步的方式，请求客户接受不符点单据。";
+  }
+
+  return "";
+}
+
+function normalizeAiQuestion(question) {
+  return String(question || "")
+    .replace(/[，。！？、；：,.!?;:\s]/g, "")
+    .replace(/（.*?）|\(.*?\)/g, "")
+    .trim();
 }
 
 function countMatches(text, words) {

@@ -141,7 +141,7 @@ function renderGroupProgress(groups) {
 }
 
 function renderEvaluationCell(avg, count) {
-  return count ? `${count}条` : "-";
+  return count ? `${Number(avg || 0).toFixed(1)}星 · ${count}条` : "-";
 }
 
 function renderCheck(done) {

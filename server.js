@@ -673,6 +673,7 @@ async function handleEvaluation(body, res) {
 
     const content = String(body.content || "").trim();
     if (content.length < 4) return { error: "请写下评价理由。", status: 400 };
+    const score = Number(body.score || 0);
 
     const evaluation = {
       id: createId(type === "peer" ? "peer" : "self"),
@@ -681,7 +682,7 @@ async function handleEvaluation(body, res) {
       studentId: student.id,
       studentName: student.name,
       targetGroupId,
-      score: 0,
+      score: Number.isFinite(score) ? Math.max(0, Math.min(5, score)) : 0,
       content,
       createdAt: new Date().toISOString()
     };

@@ -24,11 +24,13 @@ const dom = {
   customerCase: document.querySelector("#customerCase"),
   reflectionForm: document.querySelector("#reflectionForm"),
   reflectionContent: document.querySelector("#reflectionContent"),
+  evaluationSection: document.querySelector(".evaluation-section"),
   selfEvaluationForm: document.querySelector("#selfEvaluationForm"),
-  selfEvaluationContent: document.querySelector("#selfEvaluationContent"),
+  selfRatingMatrix: document.querySelector("#selfRatingMatrix"),
+  selfRadarChart: document.querySelector("#selfRadarChart"),
   peerEvaluationForm: document.querySelector("#peerEvaluationForm"),
   peerTargetGroup: document.querySelector("#peerTargetGroup"),
-  peerEvaluationContent: document.querySelector("#peerEvaluationContent"),
+  peerMemberRatings: document.querySelector("#peerMemberRatings"),
   aiQuestion: document.querySelector("#aiQuestion"),
   askAiBtn: document.querySelector("#askAiBtn"),
   voiceInputBtn: document.querySelector("#voiceInputBtn"),
@@ -37,10 +39,28 @@ const dom = {
   toast: document.querySelector("#toast")
 };
 
+const SELF_EVALUATION_DIMENSIONS = [
+  { key: "attitude", label: "学习态度" },
+  { key: "collaboration", label: "协作贡献" },
+  { key: "riskResponse", label: "风险应对能力" },
+  { key: "literacy", label: "素养体悟" },
+  { key: "businessInsight", label: "商业思维领悟" }
+];
+
+const PEER_EVALUATION_DIMENSIONS = [
+  { key: "contribution", label: "参与贡献度" },
+  { key: "communication", label: "沟通表达" },
+  { key: "teamwork", label: "团队协作" }
+];
+
 let state = null;
 let selectedGroupId = localStorage.getItem("tradepilot.groupId") || "g1";
 let currentReply = dom.assistantReply.textContent;
 let cachedVoices = [];
+const evaluationDrafts = {
+  self: {},
+  peer: {}
+};
 
 init();
 
@@ -57,7 +77,17 @@ function bindEvents() {
     localStorage.setItem("tradepilot.groupId", selectedGroupId);
     renderAll();
   });
-  dom.studentSelect.addEventListener("change", renderReflectionStudentName);
+  dom.studentSelect.addEventListener("change", () => {
+    localStorage.setItem(selectedStudentKey(), dom.studentSelect.value);
+    renderReflectionStudentName();
+    renderSelfEvaluation();
+    renderPeerEvaluation();
+  });
+  dom.peerTargetGroup.addEventListener("change", () => {
+    localStorage.setItem(peerTargetKey(), dom.peerTargetGroup.value);
+    renderPeerEvaluation();
+  });
+  dom.evaluationSection.addEventListener("click", handleStarSelection);
 
   dom.stageOneGrid.addEventListener("submit", handleScenarioSubmit);
 
@@ -104,6 +134,8 @@ function renderAll() {
   renderStudentSelect();
   renderReflectionStudentName();
   renderPeerTargetGroups();
+  renderSelfEvaluation();
+  renderPeerEvaluation();
   renderStageOne();
   renderStageTwo();
   dom.railReflection.classList.toggle(
@@ -141,9 +173,20 @@ function setMiniStatus(element, label, done) {
 
 function renderStudentSelect() {
   const students = state.students.filter((student) => student.groupId === selectedGroupId);
+  const savedStudentId = localStorage.getItem(selectedStudentKey());
+  const currentValue = students.some((student) => student.id === dom.studentSelect.value)
+    ? dom.studentSelect.value
+    : savedStudentId;
+  const fallbackValue = currentValue && students.some((student) => student.id === currentValue)
+    ? currentValue
+    : students[0]?.id || "";
   dom.studentSelect.innerHTML = students
-    .map((student) => `<option value="${student.id}">${escapeHtml(student.name)}</option>`)
+    .map((student) => `<option value="${student.id}" ${student.id === fallbackValue ? "selected" : ""}>${escapeHtml(student.name)}</option>`)
     .join("");
+  if (fallbackValue) {
+    dom.studentSelect.value = fallbackValue;
+    localStorage.setItem(selectedStudentKey(), fallbackValue);
+  }
 }
 
 function renderReflectionStudentName() {
@@ -153,9 +196,159 @@ function renderReflectionStudentName() {
 
 function renderPeerTargetGroups() {
   const options = state.groups.filter((group) => group.id !== selectedGroupId);
+  const savedTargetId = localStorage.getItem(peerTargetKey());
+  const currentValue = options.some((group) => group.id === dom.peerTargetGroup.value)
+    ? dom.peerTargetGroup.value
+    : savedTargetId;
+  const fallbackValue = currentValue && options.some((group) => group.id === currentValue)
+    ? currentValue
+    : options[0]?.id || "";
   dom.peerTargetGroup.innerHTML = options
-    .map((group) => `<option value="${group.id}">${escapeHtml(group.name)}</option>`)
+    .map((group) => `<option value="${group.id}" ${group.id === fallbackValue ? "selected" : ""}>${escapeHtml(group.name)}</option>`)
     .join("");
+  if (fallbackValue) {
+    dom.peerTargetGroup.value = fallbackValue;
+    localStorage.setItem(peerTargetKey(), fallbackValue);
+  }
+}
+
+function renderSelfEvaluation() {
+  const student = currentStudent();
+  const draft = getSelfEvaluationDraft(student?.id);
+
+  dom.selfRatingMatrix.innerHTML = SELF_EVALUATION_DIMENSIONS
+    .map((dimension) => `
+      <section class="rating-row">
+        <strong>${escapeHtml(dimension.label)}</strong>
+        <div class="star-rating" role="radiogroup" aria-label="${escapeHtml(dimension.label)}">
+          ${renderStars({
+            type: "self",
+            dimensionKey: dimension.key,
+            value: draft[dimension.key] || 0
+          })}
+        </div>
+      </section>
+    `)
+    .join("");
+
+  dom.selfRadarChart.innerHTML = renderRadarSvg(draft);
+}
+
+function renderPeerEvaluation() {
+  const targetGroupId = dom.peerTargetGroup.value;
+  const targetStudents = state.students.filter((student) => student.groupId === targetGroupId);
+  const targetGroupName = state.groups.find((group) => group.id === targetGroupId)?.name || "目标小组";
+
+  if (!targetStudents.length) {
+    dom.peerMemberRatings.innerHTML = `<div class="peer-empty">当前小组暂无可评价成员。</div>`;
+    return;
+  }
+
+  dom.peerMemberRatings.innerHTML = targetStudents
+    .map((student) => {
+      const draft = getPeerEvaluationDraft(student.id, targetGroupId);
+      return `
+        <article class="peer-member-card">
+          <strong>${escapeHtml(student.name)}</strong>
+          <span class="peer-member-group">${escapeHtml(targetGroupName)}</span>
+          <div class="peer-dimension-list">
+            ${PEER_EVALUATION_DIMENSIONS.map((dimension) => `
+              <section class="peer-dimension-row">
+                <span>${escapeHtml(dimension.label)}</span>
+                <div class="star-rating compact" role="radiogroup" aria-label="${escapeHtml(student.name)}${escapeHtml(dimension.label)}">
+                  ${renderStars({
+                    type: "peer",
+                    studentId: student.id,
+                    targetGroupId,
+                    dimensionKey: dimension.key,
+                    value: draft[dimension.key] || 0
+                  })}
+                </div>
+              </section>
+            `).join("")}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderStars({ type, dimensionKey, value, studentId = "", targetGroupId = "" }) {
+  return Array.from({ length: 5 }, (_, index) => {
+    const starValue = index + 1;
+    const active = starValue <= value;
+    return `
+      <button
+        class="star-button ${active ? "active" : ""}"
+        type="button"
+        data-rating-type="${type}"
+        data-dimension="${dimensionKey}"
+        data-value="${starValue}"
+        data-student-id="${studentId}"
+        data-target-group-id="${targetGroupId}"
+        aria-label="${starValue}星"
+        aria-pressed="${active ? "true" : "false"}"
+      >★</button>
+    `;
+  }).join("");
+}
+
+function renderRadarSvg(ratings) {
+  const values = SELF_EVALUATION_DIMENSIONS.map((dimension) => Number(ratings[dimension.key] || 0) * 2);
+  const maxValue = 10;
+  const centerX = 150;
+  const centerY = 156;
+  const radius = 102;
+  const levels = [2, 4, 6, 8, 10];
+
+  const rings = levels.map((level) => polygonPoints(SELF_EVALUATION_DIMENSIONS.length, radius * (level / maxValue), centerX, centerY)).join("");
+  const axes = SELF_EVALUATION_DIMENSIONS.map((dimension, index) => {
+    const point = axisPoint(index, SELF_EVALUATION_DIMENSIONS.length, radius, centerX, centerY);
+    return `<line x1="${centerX}" y1="${centerY}" x2="${point.x}" y2="${point.y}" />`;
+  }).join("");
+
+  const valuePoints = SELF_EVALUATION_DIMENSIONS.map((dimension, index) =>
+    axisPoint(index, SELF_EVALUATION_DIMENSIONS.length, radius * ((Number(ratings[dimension.key] || 0) * 2) / maxValue), centerX, centerY)
+  );
+  const polygon = valuePoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const labels = SELF_EVALUATION_DIMENSIONS.map((dimension, index) => {
+    const labelPoint = axisPoint(index, SELF_EVALUATION_DIMENSIONS.length, radius + 30, centerX, centerY);
+    return `<text x="${labelPoint.x}" y="${labelPoint.y}" text-anchor="${labelAnchor(index)}">${escapeHtml(dimension.label)}</text>`;
+  }).join("");
+
+  return `
+    <svg viewBox="0 0 300 312" class="radar-svg" aria-label="自评雷达图">
+      <g class="radar-grid">${rings}</g>
+      <g class="radar-axes">${axes}</g>
+      <g class="radar-scale">${[10, 8, 6, 4, 2].map((level) => `<text x="${centerX}" y="${centerY - radius * (level / maxValue) + 6}">${level}</text>`).join("")}</g>
+      <polygon class="radar-area" points="${polygon}" />
+      <polyline class="radar-line" points="${polygon}" />
+      ${valuePoints.map((point) => `<circle class="radar-dot" cx="${point.x}" cy="${point.y}" r="4.6" />`).join("")}
+      <g class="radar-labels">${labels}</g>
+    </svg>
+  `;
+}
+
+function polygonPoints(sides, radius, centerX, centerY) {
+  return `<polygon points="${Array.from({ length: sides }, (_, index) => {
+    const point = axisPoint(index, sides, radius, centerX, centerY);
+    return `${point.x},${point.y}`;
+  }).join(" ")}" />`;
+}
+
+function axisPoint(index, total, radius, centerX, centerY) {
+  const angle = (-Math.PI / 2) + (Math.PI * 2 * index) / total;
+  return {
+    x: Number((centerX + Math.cos(angle) * radius).toFixed(2)),
+    y: Number((centerY + Math.sin(angle) * radius).toFixed(2))
+  };
+}
+
+function labelAnchor(index) {
+  if (index === 0) return "middle";
+  if (index === 1 || index === 2) return "start";
+  if (index === 3 || index === 4) return "end";
+  return "middle";
 }
 
 function renderStageOne() {
@@ -216,6 +409,31 @@ function renderStageTwo() {
     dom.mixedFeedback.innerHTML = renderFeedbackContent(mixed);
   } else {
     dom.mixedFeedback.hidden = true;
+  }
+}
+
+function handleStarSelection(event) {
+  const button = event.target.closest(".star-button");
+  if (!button) return;
+
+  const value = Number(button.dataset.value || 0);
+  const dimensionKey = button.dataset.dimension || "";
+  const ratingType = button.dataset.ratingType || "";
+
+  if (ratingType === "self") {
+    const student = currentStudent();
+    const draft = getSelfEvaluationDraft(student?.id);
+    draft[dimensionKey] = value;
+    renderSelfEvaluation();
+    return;
+  }
+
+  if (ratingType === "peer") {
+    const targetGroupId = button.dataset.targetGroupId || dom.peerTargetGroup.value;
+    const studentId = button.dataset.studentId || "";
+    const draft = getPeerEvaluationDraft(studentId, targetGroupId);
+    draft[dimensionKey] = value;
+    renderPeerEvaluation();
   }
 }
 
@@ -287,12 +505,23 @@ async function handleMixedSubmit(event) {
 
 async function handleSelfEvaluationSubmit(event) {
   event.preventDefault();
+  const student = currentStudent();
+  const draft = getSelfEvaluationDraft(student?.id);
+  const missing = SELF_EVALUATION_DIMENSIONS.find((dimension) => !draft[dimension.key]);
+  if (missing) {
+    showToast(`请先完成“${missing.label}”评分。`);
+    return;
+  }
+
+  const average = averageDimensionScore(draft, SELF_EVALUATION_DIMENSIONS);
   await submitEvaluation({
     type: "self",
-    content: dom.selfEvaluationContent.value.trim(),
+    score: average,
+    content: buildSelfEvaluationSummary(student, draft, average),
     button: dom.selfEvaluationForm.querySelector("button"),
     onSuccess: () => {
-      dom.selfEvaluationContent.value = "";
+      resetSelfEvaluationDraft(student?.id);
+      renderSelfEvaluation();
       showToast("本组自评已提交到教师看板。");
     }
   });
@@ -300,19 +529,38 @@ async function handleSelfEvaluationSubmit(event) {
 
 async function handlePeerEvaluationSubmit(event) {
   event.preventDefault();
+  const targetGroupId = dom.peerTargetGroup.value;
+  const targetStudents = state.students.filter((student) => student.groupId === targetGroupId);
+  if (!targetStudents.length) {
+    showToast("当前小组暂无可评价成员。");
+    return;
+  }
+
+  for (const student of targetStudents) {
+    const draft = getPeerEvaluationDraft(student.id, targetGroupId);
+    const missing = PEER_EVALUATION_DIMENSIONS.find((dimension) => !draft[dimension.key]);
+    if (missing) {
+      showToast(`请先完成 ${student.name} 的“${missing.label}”评分。`);
+      return;
+    }
+  }
+
+  const average = averagePeerGroupScore(targetStudents, targetGroupId);
   await submitEvaluation({
     type: "peer",
-    targetGroupId: dom.peerTargetGroup.value,
-    content: dom.peerEvaluationContent.value.trim(),
+    targetGroupId,
+    score: average,
+    content: buildPeerEvaluationSummary(targetStudents, targetGroupId, average),
     button: dom.peerEvaluationForm.querySelector("button"),
     onSuccess: () => {
-      dom.peerEvaluationContent.value = "";
+      resetPeerEvaluationDraft(targetGroupId);
+      renderPeerEvaluation();
       showToast("小组互评已提交到教师看板。");
     }
   });
 }
 
-async function submitEvaluation({ type, targetGroupId, content, button, onSuccess }) {
+async function submitEvaluation({ type, targetGroupId, content, score, button, onSuccess }) {
   const studentId = dom.studentSelect.value;
   const student = state.students.find((item) => item.id === studentId);
   if (!student) {
@@ -320,7 +568,7 @@ async function submitEvaluation({ type, targetGroupId, content, button, onSucces
     return;
   }
   if (!content) {
-    showToast("请先填写评价理由。");
+    showToast("请先完成评分。");
     return;
   }
 
@@ -335,7 +583,8 @@ async function submitEvaluation({ type, targetGroupId, content, button, onSucces
         groupId: selectedGroupId,
         studentId,
         targetGroupId,
-        content
+        content,
+        score
       }
     });
     state.evaluations.push(result.evaluation);
@@ -346,6 +595,99 @@ async function submitEvaluation({ type, targetGroupId, content, button, onSucces
     button.disabled = false;
     button.textContent = originalText;
   }
+}
+
+function currentStudent() {
+  return state.students.find((item) => item.id === dom.studentSelect.value) || null;
+}
+
+function selectedStudentKey() {
+  return `tradepilot.studentId.${selectedGroupId}`;
+}
+
+function peerTargetKey() {
+  return `tradepilot.peerTarget.${selectedGroupId}`;
+}
+
+function selfDraftKey(studentId) {
+  return `${selectedGroupId}:${studentId || "default"}`;
+}
+
+function peerDraftKey(studentId, targetGroupId) {
+  return `${selectedGroupId}:${studentId || "reviewer"}:${targetGroupId || "target"}`;
+}
+
+function getSelfEvaluationDraft(studentId) {
+  const key = selfDraftKey(studentId);
+  if (!evaluationDrafts.self[key]) {
+    evaluationDrafts.self[key] = Object.fromEntries(SELF_EVALUATION_DIMENSIONS.map((dimension) => [dimension.key, 0]));
+  }
+  return evaluationDrafts.self[key];
+}
+
+function resetSelfEvaluationDraft(studentId) {
+  evaluationDrafts.self[selfDraftKey(studentId)] = Object.fromEntries(SELF_EVALUATION_DIMENSIONS.map((dimension) => [dimension.key, 0]));
+}
+
+function getPeerEvaluationDraft(studentId, targetGroupId) {
+  const key = peerDraftKey(studentId, targetGroupId);
+  if (!evaluationDrafts.peer[key]) {
+    evaluationDrafts.peer[key] = Object.fromEntries(PEER_EVALUATION_DIMENSIONS.map((dimension) => [dimension.key, 3]));
+  }
+  return evaluationDrafts.peer[key];
+}
+
+function resetPeerEvaluationDraft(targetGroupId) {
+  state.students
+    .filter((student) => student.groupId === targetGroupId)
+    .forEach((student) => {
+      evaluationDrafts.peer[peerDraftKey(student.id, targetGroupId)] = Object.fromEntries(PEER_EVALUATION_DIMENSIONS.map((dimension) => [dimension.key, 3]));
+    });
+}
+
+function averageDimensionScore(ratings, dimensions) {
+  const total = dimensions.reduce((sum, dimension) => sum + Number(ratings[dimension.key] || 0), 0);
+  return Number((total / dimensions.length).toFixed(1));
+}
+
+function averagePeerGroupScore(students, targetGroupId) {
+  const allScores = students.flatMap((student) =>
+    PEER_EVALUATION_DIMENSIONS.map((dimension) => Number(getPeerEvaluationDraft(student.id, targetGroupId)[dimension.key] || 0))
+  );
+  const total = allScores.reduce((sum, score) => sum + score, 0);
+  return Number((total / allScores.length).toFixed(1));
+}
+
+function buildSelfEvaluationSummary(student, ratings, average) {
+  const detail = SELF_EVALUATION_DIMENSIONS
+    .map((dimension) => `${dimension.label}${ratings[dimension.key]}星`)
+    .join("、");
+  return `${student?.name || "学生"}自评：${detail}。综合均分${average}星，${summaryByAverage(average, "self")}。`;
+}
+
+function buildPeerEvaluationSummary(targetStudents, targetGroupId, average) {
+  const targetGroupName = state.groups.find((group) => group.id === targetGroupId)?.name || "目标小组";
+  const detail = targetStudents
+    .map((student) => {
+      const ratings = getPeerEvaluationDraft(student.id, targetGroupId);
+      const row = PEER_EVALUATION_DIMENSIONS.map((dimension) => `${dimension.label}${ratings[dimension.key]}星`).join("、");
+      return `${student.name}（${row}）`;
+    })
+    .join("；");
+  return `对${targetGroupName}的互评：${detail}。综合均分${average}星，${summaryByAverage(average, "peer")}。`;
+}
+
+function summaryByAverage(average, type) {
+  if (average >= 4.5) {
+    return type === "self" ? "整体表现很突出，继续保持思考深度和协作稳定性" : "整体表现突出，值得重点学习";
+  }
+  if (average >= 3.5) {
+    return type === "self" ? "整体表现较稳，还可以继续强化细节表达" : "整体表现较稳，可继续加强亮点表达";
+  }
+  if (average >= 2.5) {
+    return type === "self" ? "基础表现已具备，建议继续补强风险分析和表达" : "基础表现较完整，仍有提升空间";
+  }
+  return type === "self" ? "建议继续梳理思路，提升课堂参与和风险判断" : "建议进一步增强参与度、表达和协作配合";
 }
 
 async function handleReflectionSubmit(event) {

@@ -40,6 +40,15 @@ const STOP_WORDS = new Set([
   "应该", "还有", "学习", "课堂", "本节", "本堂", "认识", "了解", "觉得", "因为",
   "所以", "但是", "如果", "以及", "对于", "风险", "收汇"
 ]);
+const WORD_CLOUD_DIRECT_TERM_RE = /^[\p{Script=Han}A-Za-z0-9+#&-]+$/u;
+const WORD_CLOUD_HAN_RE = /^\p{Script=Han}+$/u;
+const WORD_CLOUD_MERGE_BLOCK_CHARS = new Set([
+  "了", "的", "和", "是", "在", "把", "对", "与", "及", "又",
+  "也", "很", "更", "先", "再", "都", "就", "还", "会", "吗",
+  "我", "你", "他", "她", "它", "这", "那", "其", "该", "让",
+  "被", "从", "向", "给", "跟", "同", "于", "并", "才", "已",
+  "正", "将", "要", "想", "来", "去"
+]);
 
 let writeQueue = Promise.resolve();
 
@@ -1056,14 +1065,32 @@ function generateWordCloud(reflections) {
 
   for (const reflection of reflections) {
     const text = String(reflection.content || "").replace(/[，。！？、；：“”"'（）()《》,.!?;:\n\r]/g, " ");
-    const words = segmenter
-      ? Array.from(segmenter.segment(text)).filter((item) => item.isWordLike).map((item) => item.segment)
-      : text.split(/\s+/);
+    const chunks = text.split(/\s+/).map((item) => item.trim()).filter(Boolean);
 
-    for (const raw of words) {
-      const word = raw.trim();
-      if (word.length < 2 || /^\d+$/.test(word) || STOP_WORDS.has(word)) continue;
-      counts.set(word, (counts.get(word) || 0) + 1);
+    for (const chunk of chunks) {
+      if (shouldKeepWholeChunk(chunk)) {
+        addWordCloudCount(counts, chunk);
+        continue;
+      }
+
+      const words = segmenter
+        ? Array.from(segmenter.segment(chunk)).filter((item) => item.isWordLike).map((item) => item.segment.trim()).filter(Boolean)
+        : [chunk];
+      const mergedIndexes = new Set();
+
+      for (let index = 0; index < words.length - 1; index += 1) {
+        const merged = mergeWordCloudSegments(words[index], words[index + 1]);
+        if (!merged || !isWordCloudTerm(merged)) continue;
+        addWordCloudCount(counts, merged);
+        mergedIndexes.add(index);
+        mergedIndexes.add(index + 1);
+        index += 1;
+      }
+
+      words.forEach((word, index) => {
+        if (mergedIndexes.has(index)) return;
+        addWordCloudCount(counts, word);
+      });
     }
   }
 
@@ -1071,6 +1098,43 @@ function generateWordCloud(reflections) {
     .map(([term, weight]) => ({ term, weight }))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 50);
+}
+
+function addWordCloudCount(counts, raw) {
+  const word = String(raw || "").trim();
+  if (!isWordCloudTerm(word)) return;
+  counts.set(word, (counts.get(word) || 0) + 1);
+}
+
+function isWordCloudTerm(word) {
+  return countWordCloudChars(word) >= 2 && !/^\d+$/.test(word) && !STOP_WORDS.has(word);
+}
+
+function shouldKeepWholeChunk(chunk) {
+  const length = countWordCloudChars(chunk);
+  return length >= 2 && length <= 6 && WORD_CLOUD_DIRECT_TERM_RE.test(chunk);
+}
+
+function mergeWordCloudSegments(left, right) {
+  const merged = `${left}${right}`.trim();
+  const leftLength = countWordCloudChars(left);
+  const rightLength = countWordCloudChars(right);
+  const mergedLength = countWordCloudChars(merged);
+
+  if (mergedLength < 3 || mergedLength > 6 || !WORD_CLOUD_HAN_RE.test(merged)) return null;
+
+  const leftSingle = leftLength === 1 && !WORD_CLOUD_MERGE_BLOCK_CHARS.has(left);
+  const rightSingle = rightLength === 1 && !WORD_CLOUD_MERGE_BLOCK_CHARS.has(right);
+
+  if ((leftSingle && rightLength >= 2) || (rightSingle && leftLength >= 2)) {
+    return merged;
+  }
+
+  return null;
+}
+
+function countWordCloudChars(text) {
+  return Array.from(String(text || "").trim()).length;
 }
 
 function fallbackAiAnswer(question) {

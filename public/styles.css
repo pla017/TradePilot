@@ -2004,6 +2004,67 @@ body.teacher-page .word-cloud {
   font-weight: 900;
 }
 
+.evaluation-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.evaluation-board-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 16px 14px;
+  border: 1px solid #d9e7f1;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #f7fbfe);
+  box-shadow: 0 10px 22px rgba(31, 117, 168, 0.06);
+}
+
+.evaluation-board-card > strong {
+  color: #15395b;
+  font-size: 18px;
+}
+
+.evaluation-board-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.evaluation-board-row + .evaluation-board-row {
+  border-top: 1px dashed #dbe6ee;
+}
+
+.evaluation-board-label {
+  color: #5b7288;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.evaluation-board-stars {
+  display: flex;
+  gap: 3px;
+}
+
+.evaluation-board-star {
+  color: #d4dbe3;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.evaluation-board-star.active {
+  color: #ffb53f;
+}
+
+.evaluation-board-meta {
+  color: #66778b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .submission-item,
 .reflection-item {
   padding: 16px;
@@ -2032,6 +2093,50 @@ body.teacher-page .reflection-item {
   line-height: 1.65;
 }
 
+.teacher-mixed-dimensions {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #dce8f2;
+  border-radius: 18px;
+  background: #f4f9fd;
+}
+
+.teacher-mixed-dimension {
+  display: grid;
+  gap: 8px;
+}
+
+.teacher-mixed-dimension-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  color: #1d5b85;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.teacher-mixed-dimension-head strong {
+  margin: 0;
+  color: #15395b;
+  font-size: 14px;
+}
+
+.teacher-mixed-track {
+  overflow: hidden;
+  height: 9px;
+  border-radius: 999px;
+  background: #e4edf5;
+}
+
+.teacher-mixed-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #245f88, #54a6c0);
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -2058,6 +2163,76 @@ body.teacher-page .reflection-item {
 
 [hidden] {
   display: none !important;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  select,
+  .field select,
+  .group-picker select,
+  .case-select select,
+  .evaluation-student select,
+  .evaluation-card select,
+  .evaluation-picker select,
+  #peerTargetGroup {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    min-height: 56px;
+    padding: 0 18px;
+    background-image: none;
+    background-color: #fff;
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+    touch-action: manipulation;
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .field.compact select {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .group-context,
+  .lesson-rail {
+    position: static;
+  }
+
+  .group-picker,
+  .case-select,
+  .evaluation-picker {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .group-actions {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 980px) {
+  select,
+  .field select,
+  .group-picker select,
+  .case-select select,
+  .evaluation-student select,
+  .evaluation-card select,
+  .evaluation-picker select,
+  #peerTargetGroup {
+    min-height: 56px;
+    padding: 0 18px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+    touch-action: manipulation;
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .field.compact select {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.18);
+  }
 }
 
 @media (max-width: 980px) {

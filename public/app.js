@@ -1,5 +1,6 @@
 const dom = {
   groupSelect: document.querySelector("#groupSelect"),
+  groupSelectHidden: document.querySelector("#groupSelectHidden"),
   currentGroupName: document.querySelector("#currentGroupName"),
   currentGroupHint: document.querySelector("#currentGroupHint"),
   miniCollection: document.querySelector("#miniCollection"),
@@ -72,10 +73,8 @@ async function init() {
 }
 
 function bindEvents() {
-  dom.groupSelect.addEventListener("change", () => {
-    selectedGroupId = dom.groupSelect.value;
-    localStorage.setItem("tradepilot.groupId", selectedGroupId);
-    renderAll();
+  [dom.groupSelect, dom.groupSelectHidden].filter(Boolean).forEach((select) => {
+    select.addEventListener("change", handleGroupChange);
   });
   dom.studentSelect.addEventListener("change", () => {
     localStorage.setItem(selectedStudentKey(), dom.studentSelect.value);
@@ -121,6 +120,12 @@ function bindEvents() {
   dom.speakReplyBtn.addEventListener("click", () => speak(currentReply));
 }
 
+function handleGroupChange(event) {
+  selectedGroupId = event.currentTarget.value;
+  localStorage.setItem("tradepilot.groupId", selectedGroupId);
+  renderAll();
+}
+
 async function loadState() {
   state = await api("/api/bootstrap");
   if (!state.groups.some((group) => group.id === selectedGroupId)) {
@@ -142,13 +147,18 @@ function renderAll() {
     "done",
     state.reflections.some((item) => item.groupId === selectedGroupId)
   );
+  applyCustomerPreset();
   updateRiskResult();
 }
 
 function renderGroupSelect() {
-  dom.groupSelect.innerHTML = state.groups
+  const options = state.groups
     .map((group) => `<option value="${group.id}" ${group.id === selectedGroupId ? "selected" : ""}>${escapeHtml(group.name)}</option>`)
     .join("");
+  [dom.groupSelect, dom.groupSelectHidden].filter(Boolean).forEach((select) => {
+    select.innerHTML = options;
+    select.value = selectedGroupId;
+  });
 }
 
 function renderGroupContext() {
@@ -838,7 +848,7 @@ function applyCustomerPreset() {
     selects.customerCredit.value = "1";
     selects.countryRisk.value = "1";
     selects.productAttribute.value = "1";
-    selects.transactionScale.value = "5";
+    selects.transactionScale.value = "1";
   } else {
     selects.customerCredit.value = "5";
     selects.countryRisk.value = "5";
@@ -930,12 +940,10 @@ function renderMixedDimensionFeedback(submission) {
           <div class="mixed-dimension-track">
             <div class="mixed-dimension-fill" style="width:${item.score * 10}%"></div>
           </div>
-          <p class="mixed-dimension-note">${escapeHtml(item.text)}</p>
         </section>
       `).join("")}
     </div>
-    <p class="feedback-summary">${icon("bulb")}<strong>综合建议：</strong>${escapeHtml(analysis.summary)}</p>
-    <p class="mixed-feedback-footer">${icon("chat")}完成风险评估与策略设计后获取点评</p>
+    <p class="mixed-feedback-footer">${icon("chat")}${submission ? "已根据风险评估与策略设计生成点评" : "完成风险评估与策略设计后获取点评"}</p>
   `;
 }
 
@@ -993,11 +1001,11 @@ function getMixedPaymentDimensionFeedback(submission) {
   if (!submission) {
     return {
       dimensions: [
-        { title: "① 交易风险等级评估正确性", score: 0, text: "提交混合支付策略后，这里会判断你写出的风险等级是否与评估结果一致。" },
-        { title: "② 混合支付策略与交易风险的匹配度", score: 0, text: "提交后会判断付款组合和百分比是否与客户风险、国家风险相匹配。" },
-        { title: "③ 混合支付策略多元性", score: 0, text: "提交后会提示是否形成了至少两种以上支付工具的组合。" }
+        { title: "① 交易风险等级评估正确性", score: 0, text: "未写出风险等级" },
+        { title: "② 混合支付策略与交易风险的匹配度", score: 0, text: "未提交支付比例与组合" },
+        { title: "③ 混合支付策略多元性", score: 0, text: "无有效组合" }
       ],
-      summary: "先写出风险等级，再补充付款工具和百分比，系统才会给出分维度反馈。"
+      summary: "策略需改进。请先判断风险等级，再按风险等级原则设计至少两种支付组合。"
     };
   }
 
@@ -1010,6 +1018,8 @@ function getMixedPaymentDimensionFeedback(submission) {
   const methodCount = [hasAdvance, hasCollection, hasLc].filter(Boolean).length;
   const hasPercentages = /%|％|百分之|[一二三四五六七八九十两]成/.test(text);
   const has20 = /20%|20％|百分之二十|两成/.test(text);
+  const has40 = /40%|40％|百分之四十|四成/.test(text);
+  const has50 = /50%|50％|百分之五十|五成/.test(text);
   const has30OrMoreAdvance = /30%|30％|40%|40％|50%|50％|60%|60％|70%|70％|百分之三十|百分之四十|百分之五十|百分之六十|百分之七十|三成|四成|五成|六成|七成/.test(text);
   const has80 = /80%|80％|百分之八十|八成/.test(text);
 
@@ -1021,6 +1031,8 @@ function getMixedPaymentDimensionFeedback(submission) {
     hasLc,
     hasPercentages,
     has20,
+    has40,
+    has50,
     has80,
     has30OrMoreAdvance,
     methodCount
@@ -1030,10 +1042,10 @@ function getMixedPaymentDimensionFeedback(submission) {
   const dimensions = [riskDimension, matchDimension, diversityDimension];
   const average = Number((dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length).toFixed(1));
   const summary = average >= 8
-    ? `策略设计较完整。${submission.aiFeedback || "可以继续补充各支付工具分别覆盖哪些风险。"}`
+    ? `策略设计较完整。${riskLevelLabel(riskLevel)}下的支付组合与比例基本匹配。`
     : average >= 5
-      ? `策略还有优化空间。${submission.aiFeedback || "建议再核对风险等级，并优化各支付工具比例。"}`
-      : `策略需要改进。${submission.aiFeedback || "请先确认风险等级，再让预付款、信用证、托收的比例与风险相匹配。"}`
+      ? `策略还有优化空间。请根据${riskLevelLabel(riskLevel)}原则重新核对付款工具和比例。`
+      : `策略需改进。请正确判断风险等级，按${riskLevelLabel(riskLevel)}原则设计至少两种支付组合。`
   ;
 
   return { dimensions, summary: summary.slice(0, 120) };
@@ -1045,7 +1057,7 @@ function buildMixedRiskDimension(mentionedRisk, expectedRisk) {
     return {
       title: "① 交易风险等级评估正确性",
       score: 0,
-      text: `未写出风险等级。请先明确判断为${expectedLabel}，再继续设计支付方案。`
+      text: "未写出风险等级"
     };
   }
 
@@ -1059,55 +1071,55 @@ function buildMixedRiskDimension(mentionedRisk, expectedRisk) {
 
   return {
     title: "① 交易风险等级评估正确性",
-    score: 3,
-    text: `风险等级判断偏差。当前更接近${expectedLabel}，请先统一风险判断后再设计支付比例。`
+    score: 0,
+    text: `风险等级判断偏差。系统评估为${expectedLabel}`
   };
 }
 
-function buildMixedMatchDimension({ riskLevel, hasAdvance, hasCollection, hasLc, hasPercentages, has20, has80, has30OrMoreAdvance, methodCount }) {
+function buildMixedMatchDimension({ riskLevel, hasAdvance, hasCollection, hasLc, hasPercentages, has20, has40, has50, has80, has30OrMoreAdvance, methodCount }) {
   let score = 0;
   let text = "";
 
   if (riskLevel === "low") {
     if (hasAdvance && hasCollection && hasPercentages && has20 && has80) {
       score = 10;
-      text = "匹配度较高。低风险交易采用20%预付款加80%托收，思路较合理。";
+      text = "匹配度较好，符合低风险原则，可采用20%预付款+80%托收。";
     } else if (hasAdvance && (hasCollection || hasLc) && hasPercentages) {
-      score = 8;
-      text = "匹配度较好。低风险客户可以采用预付款加托收/信用证组合，再把比例写得更清楚。";
+      score = 6;
+      text = "有组合意识，但低风险场景应突出低成本原则，建议优化为20%预付款+80%托收。";
     } else if (methodCount >= 2) {
-      score = 5;
-      text = "匹配度一般。已出现组合思路，但还需要补足具体比例和低风险下的成本考虑。";
+      score = 4;
+      text = "已出现组合思路，但缺少比例，低风险原则不够清晰。";
     } else {
       score = 2;
-      text = "匹配度较低。低风险场景通常不需要过重保障，建议补充预付款与托收的组合思路。";
+      text = "匹配度较低，低风险场景通常应采用预付款+托收的低成本组合。";
     }
   } else if (riskLevel === "medium") {
-    if (hasAdvance && hasLc && hasPercentages) {
+    if (hasAdvance && hasLc && hasPercentages && (has40 || has50 || has30OrMoreAdvance)) {
       score = 10;
-      text = "匹配度较高。中风险交易提高了保障强度，预付款和信用证组合较稳。";
+      text = "匹配度较好，符合中风险原则，适度提升了预付款或信用证占比。";
     } else if (hasLc && hasCollection && hasPercentages) {
-      score = 8;
-      text = "匹配度较好。中风险下加入信用证是对的，再明确比例并减少托收占比会更稳。";
-    } else if (methodCount >= 2) {
       score = 6;
-      text = "匹配度一般。已尝试做组合，但中风险建议适度提升预付款或信用证占比，减少托收。";
-    } else {
+      text = "方向基本正确，但中风险应适度提升预付款或信用证占比，减少托收。";
+    } else if (methodCount >= 2) {
       score = 2;
+      text = "匹配度较低，明显偏离原则，请重新设计支付比例。中风险：适度提升预付款或信用证占比，减少托收。";
+    } else {
+      score = 0;
       text = "匹配度较低。明显偏离原则，请重新设计支付比例。中风险应适度提升预付款或信用证占比。";
     }
   } else {
     if (hasAdvance && hasLc && hasPercentages && has30OrMoreAdvance) {
       score = 10;
-      text = "匹配度较高。高风险下提高预付款并配合信用证，保障强度较足。";
+      text = "匹配度较好，符合高风险原则，预付款和信用证保障较充分。";
     } else if (hasAdvance && hasLc) {
-      score = 8;
-      text = "匹配度较好。高风险方向正确，再把预付款比例写高一些会更稳。";
+      score = 6;
+      text = "方向基本正确，但高风险应写清较高预付款比例，并减少托收依赖。";
     } else if (methodCount >= 2) {
-      score = 4;
-      text = "匹配度偏低。高风险交易不宜依赖托收，建议提高预付款和信用证比重。";
+      score = 2;
+      text = "匹配度较低，高风险交易不宜依赖托收，建议提高预付款和信用证比重。";
     } else {
-      score = 1;
+      score = 0;
       text = "匹配度很低。高风险交易应优先用高比例预付款配合信用证，不建议单一支付方式。";
     }
   }

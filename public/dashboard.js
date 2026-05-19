@@ -12,6 +12,7 @@ const dom = {
   groupProgress: document.querySelector("#groupProgress"),
   wordCloud: document.querySelector("#wordCloud"),
   recentSubmissions: document.querySelector("#recentSubmissions"),
+  evaluationBoard: document.querySelector("#evaluationBoard"),
   evaluationSummary: document.querySelector("#evaluationSummary"),
   evaluationList: document.querySelector("#evaluationList"),
   reflectionList: document.querySelector("#reflectionList"),
@@ -53,6 +54,7 @@ function renderDashboard(data) {
   renderGroupProgress(dashboard.groupProgress);
   renderWordCloud(dashboard.wordCloud);
   renderRecentSubmissions(dashboard.recentSubmissions);
+  renderEvaluationBoard(dashboard.groupProgress);
   renderEvaluations(dashboard.evaluations, dashboard.evaluationSummary);
   renderReflections(dashboard.reflections);
 }
@@ -144,6 +146,37 @@ function renderEvaluationCell(avg, count) {
   return count ? `${Number(avg || 0).toFixed(1)}星 · ${count}条` : "-";
 }
 
+function renderEvaluationBoard(groups) {
+  if (!groups.length) {
+    dom.evaluationBoard.innerHTML = `<div class="reflection-item"><p>暂无星级数据。</p></div>`;
+    return;
+  }
+
+  dom.evaluationBoard.innerHTML = groups
+    .map((group) => `
+      <article class="evaluation-board-card">
+        <strong>${escapeHtml(group.groupName)}</strong>
+        ${renderStarRow("自评", group.selfAvg, group.selfCount)}
+        ${renderStarRow("互评", group.peerAvg, group.peerCount)}
+      </article>
+    `)
+    .join("");
+}
+
+function renderStarRow(label, avg, count) {
+  const filled = Math.max(0, Math.min(5, Math.round(Number(avg || 0))));
+  const stars = Array.from({ length: 5 }, (_, index) => `
+    <span class="evaluation-board-star ${index < filled ? "active" : ""}">★</span>
+  `).join("");
+  return `
+    <div class="evaluation-board-row">
+      <span class="evaluation-board-label">${label}</span>
+      <div class="evaluation-board-stars">${stars}</div>
+      <span class="evaluation-board-meta">${count || 0}条</span>
+    </div>
+  `;
+}
+
 function renderCheck(done) {
   return `<span class="check ${done ? "ok" : ""}">${done ? "已交" : "待交"}</span>`;
 }
@@ -230,9 +263,113 @@ function renderRecentSubmissions(items) {
       <article class="submission-item">
         <strong>${escapeHtml(item.groupName)} · ${escapeHtml(item.scenarioTitle)}</strong>
         <p>${escapeHtml(truncate(item.content, 108))}</p>
+        ${renderTeacherMixedDimensions(item)}
       </article>
     `)
     .join("");
+}
+
+function renderTeacherMixedDimensions(item) {
+  if (item.scenarioCode !== "mixed_payment") return "";
+
+  const analysis = getMixedPaymentDimensionFeedback(item);
+  return `
+    <div class="teacher-mixed-dimensions" aria-label="混合支付点评维度">
+      ${analysis.dimensions.map((dimension) => `
+        <section class="teacher-mixed-dimension">
+          <div class="teacher-mixed-dimension-head">
+            <span>${escapeHtml(dimension.title)}</span>
+            <strong>${Number(dimension.score || 0)}/10</strong>
+          </div>
+          <div class="teacher-mixed-track">
+            <div class="teacher-mixed-fill" style="width:${Number(dimension.score || 0) * 10}%"></div>
+          </div>
+        </section>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getMixedPaymentDimensionFeedback(submission) {
+  const text = `${submission.content || ""} ${submission.paymentStrategy || ""}`.replace(/\s+/g, "");
+  const riskLevel = submission.riskLevel || inferRiskLevelFromText(text) || "low";
+  const mentionedRisk = inferRiskLevelFromText(text);
+  const hasAdvance = /预付款|预付|订金|定金/.test(text);
+  const hasCollection = /托收|D\/P|D\/A/i.test(text);
+  const hasLc = /信用证|L\/C|LC/i.test(text);
+  const methodCount = [hasAdvance, hasCollection, hasLc].filter(Boolean).length;
+  const hasPercentages = /%|％|百分之|[一二三四五六七八九十两]成/.test(text);
+  const has20 = /20%|20％|百分之二十|两成/.test(text);
+  const has40 = /40%|40％|百分之四十|四成/.test(text);
+  const has50 = /50%|50％|百分之五十|五成/.test(text);
+  const has30OrMoreAdvance = /30%|30％|40%|40％|50%|50％|60%|60％|70%|70％|百分之三十|百分之四十|百分之五十|百分之六十|百分之七十|三成|四成|五成|六成|七成/.test(text);
+  const has80 = /80%|80％|百分之八十|八成/.test(text);
+
+  return {
+    dimensions: [
+      buildMixedRiskDimension(mentionedRisk, riskLevel),
+      buildMixedMatchDimension({
+        riskLevel,
+        hasAdvance,
+        hasCollection,
+        hasLc,
+        hasPercentages,
+        has20,
+        has40,
+        has50,
+        has80,
+        has30OrMoreAdvance,
+        methodCount
+      }),
+      buildMixedDiversityDimension(methodCount, hasPercentages)
+    ]
+  };
+}
+
+function buildMixedRiskDimension(mentionedRisk, expectedRisk) {
+  if (!mentionedRisk) {
+    return { title: "① 交易风险等级评估正确性", score: 0 };
+  }
+  return {
+    title: "① 交易风险等级评估正确性",
+    score: mentionedRisk === expectedRisk ? 10 : 0
+  };
+}
+
+function buildMixedMatchDimension({ riskLevel, hasAdvance, hasCollection, hasLc, hasPercentages, has20, has40, has50, has80, has30OrMoreAdvance, methodCount }) {
+  if (riskLevel === "low") {
+    if (hasAdvance && hasCollection && hasPercentages && has20 && has80) return { title: "② 混合支付策略与交易风险的匹配度", score: 10 };
+    if (hasAdvance && (hasCollection || hasLc) && hasPercentages) return { title: "② 混合支付策略与交易风险的匹配度", score: 6 };
+    if (methodCount >= 2) return { title: "② 混合支付策略与交易风险的匹配度", score: 4 };
+    return { title: "② 混合支付策略与交易风险的匹配度", score: 2 };
+  }
+
+  if (riskLevel === "medium") {
+    if (hasAdvance && hasLc && hasPercentages && (has40 || has50 || has30OrMoreAdvance)) return { title: "② 混合支付策略与交易风险的匹配度", score: 10 };
+    if (hasLc && hasCollection && hasPercentages) return { title: "② 混合支付策略与交易风险的匹配度", score: 6 };
+    if (methodCount >= 2) return { title: "② 混合支付策略与交易风险的匹配度", score: 2 };
+    return { title: "② 混合支付策略与交易风险的匹配度", score: 0 };
+  }
+
+  if (hasAdvance && hasLc && hasPercentages && has30OrMoreAdvance) return { title: "② 混合支付策略与交易风险的匹配度", score: 10 };
+  if (hasAdvance && hasLc) return { title: "② 混合支付策略与交易风险的匹配度", score: 6 };
+  if (methodCount >= 2) return { title: "② 混合支付策略与交易风险的匹配度", score: 2 };
+  return { title: "② 混合支付策略与交易风险的匹配度", score: 0 };
+}
+
+function buildMixedDiversityDimension(methodCount, hasPercentages) {
+  if (methodCount >= 3 && hasPercentages) return { title: "③ 混合支付策略多元性", score: 10 };
+  if (methodCount === 2 && hasPercentages) return { title: "③ 混合支付策略多元性", score: 8 };
+  if (methodCount === 2) return { title: "③ 混合支付策略多元性", score: 6 };
+  if (methodCount === 1) return { title: "③ 混合支付策略多元性", score: 2 };
+  return { title: "③ 混合支付策略多元性", score: 0 };
+}
+
+function inferRiskLevelFromText(text) {
+  if (/高风险/.test(text)) return "high";
+  if (/中风险/.test(text)) return "medium";
+  if (/低风险/.test(text)) return "low";
+  return "";
 }
 
 function renderEvaluations(items, summary) {

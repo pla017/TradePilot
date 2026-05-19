@@ -78,6 +78,7 @@ if (process.argv.includes("--self-test")) {
   const scenario = db.scenarios.find((item) => item.code === "collection_crisis");
   const now = new Date().toISOString();
   await updateDb(async (testDb) => {
+    testDb.submissions = testDb.submissions.filter((item) => item.id !== "sub_self_test");
     testDb.submissions.push({
       id: "sub_self_test",
       groupId: "g1",
@@ -98,8 +99,12 @@ if (process.argv.includes("--self-test")) {
   if (!afterWrite.submissions.find((item) => item.id === "sub_self_test")) {
     throw new Error("SQLite write/read check failed");
   }
-  await resetClassroomData();
-  console.log("Self-test passed: SQLite seed, write, read and reset are OK.");
+  await updateDb(async (testDb) => {
+    testDb.riskAssessments = testDb.riskAssessments.filter((item) => item.submissionId !== "sub_self_test");
+    testDb.submissions = testDb.submissions.filter((item) => item.id !== "sub_self_test");
+    return null;
+  });
+  console.log("Self-test passed: SQLite seed, write, read and cleanup are OK.");
   process.exit(0);
 }
 
@@ -961,24 +966,35 @@ function scoreMixedPayment(content, body) {
   const riskLevel = body.riskLevel || "low";
   const has20 = /20%|20％|百分之二十|两成/.test(text);
   const has80 = /80%|80％|百分之八十|八成/.test(text);
+  const has40OrMore = /40%|40％|50%|50％|60%|60％|70%|70％|百分之四十|百分之五十|百分之六十|百分之七十|四成|五成|六成|七成/.test(text);
   const hasAdvance = /预付款|预付|订金|定金/.test(text);
   const hasCollection = /托收|D\/P|D\/A/i.test(text);
   const hasLc = /信用证|L\/C|LC/i.test(text);
   const lowRisk = riskLevel === "low";
+  const mediumRisk = riskLevel === "medium";
+  const highRisk = riskLevel === "high";
 
   if (lowRisk && has20 && has80 && hasAdvance && hasCollection) {
     return {
       score: 96,
       riskLevel,
-      feedback: "方向很稳。可以再说明20%预付款覆盖哪些成本，以及80%托收主要承担哪些风险。"
+      feedback: "低风险匹配较好：20%预付款+80%托收符合低成本原则。"
     };
   }
 
-  if (lowRisk && has20 && has80 && hasLc && hasCollection) {
+  if (mediumRisk && hasAdvance && hasLc && has40OrMore) {
     return {
-      score: 86,
+      score: 92,
       riskLevel,
-      feedback: "组合基本可行。再比较一下信用证成本与低风险客户之间是否匹配，理由会更完整。"
+      feedback: "中风险匹配较好：适度提升预付款或信用证占比，降低托收依赖。"
+    };
+  }
+
+  if (highRisk && hasAdvance && hasLc && has40OrMore) {
+    return {
+      score: 92,
+      riskLevel,
+      feedback: "高风险匹配较好：较高预付款配合信用证，保障强度较足。"
     };
   }
 
@@ -987,7 +1003,7 @@ function scoreMixedPayment(content, body) {
   return {
     score: Math.min(82, base + detail * 3),
     riskLevel,
-    feedback: "已记录策略。先回到风险等级，再判断付款比例是否能覆盖客户、国家和商品风险。"
+    feedback: "策略需改进。请先确认风险等级，再按低/中/高风险原则重新设计支付工具和比例。"
   };
 }
 

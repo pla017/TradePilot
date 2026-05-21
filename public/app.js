@@ -6,12 +6,31 @@ const dom = {
   miniCollection: document.querySelector("#miniCollection"),
   miniLc: document.querySelector("#miniLc"),
   miniMixed: document.querySelector("#miniMixed"),
+  preQuizForm: document.querySelector("#preQuizForm"),
+  preQuizStudentSelect: document.querySelector("#preQuizStudentSelect"),
+  preQuizQuestions: document.querySelector("#preQuizQuestions"),
+  preQuizResult: document.querySelector("#preQuizResult"),
+  preQuizStatus: document.querySelector("#preQuizStatus"),
+  postQuizForm: document.querySelector("#postQuizForm"),
+  postQuizStudentSelect: document.querySelector("#postQuizStudentSelect"),
+  postQuizQuestions: document.querySelector("#postQuizQuestions"),
+  postQuizResult: document.querySelector("#postQuizResult"),
+  postQuizStatus: document.querySelector("#postQuizStatus"),
+  mixExamForm: document.querySelector("#mixExamForm"),
+  mixExamStudentSelect: document.querySelector("#mixExamStudentSelect"),
+  mixExamContent: document.querySelector("#mixExamContent"),
+  mixExamFeedback: document.querySelector("#mixExamFeedback"),
+  mixExamRiskScore: document.querySelector("#mixExamRiskScore"),
+  mixExamRiskLevelText: document.querySelector("#mixExamRiskLevelText"),
+  mixExamStatus: document.querySelector("#mixExamStatus"),
   studentSelect: document.querySelector("#studentSelect"),
   reflectionStudentName: document.querySelector("#reflectionStudentName"),
   stageOneGrid: document.querySelector("#stageOneGrid"),
   stageOneStatus: document.querySelector("#stageOneStatus"),
   railStageOne: document.querySelector("#railStageOne"),
   railStageTwo: document.querySelector("#railStageTwo"),
+  railPreQuiz: document.querySelector("#railPreQuiz"),
+  railPostQuiz: document.querySelector("#railPostQuiz"),
   railReflection: document.querySelector("#railReflection"),
   nextGate: document.querySelector("#nextGate"),
   nextStageBtn: document.querySelector("#nextStageBtn"),
@@ -54,6 +73,32 @@ const PEER_EVALUATION_DIMENSIONS = [
   { key: "teamwork", label: "团队协作" }
 ];
 
+const PRE_QUIZ_QUESTIONS = [
+  { text: "预付款（T/T in advance）对于出口商而言，最主要的优点是？", options: ["资金占用少", "手续简便", "收汇安全有保障", "客户易接受"], correct: 2 },
+  { text: "信用证（L/C）依据什么进行分类？", options: ["是否可撤销", "付款时间", "是否有保兑", "以上都是"], correct: 3 },
+  { text: "以下哪种支付方式属于银行信用？", options: ["托收（D/P）", "信用证（L/C）", "预付款", "赊销"], correct: 1 },
+  { text: "托收结算中，D/P和D/A的主要区别在于？", options: ["交单时间不同", "是否需要单据", "银行责任不同", "手续费不同"], correct: 0 },
+  { text: "信用证结算流程中，开证行承担的责任是？", options: ["审单付款", "协助出口商发货", "调查进口商资信", "安排运输"], correct: 0 },
+  { text: "以下关于托收特点的描述，错误的是？", options: ["银行不承担付款责任", "托收属于银行信用", "出口商收汇有保证", "手续相对简单"], correct: 2 },
+  { text: "预付款结算方式对进口商的主要风险是？", options: ["资金占用", "收货风险", "汇率波动", "单据不符"], correct: 1 },
+  { text: "信用证项下，开证行付款的前提是？", options: ["进口商同意", "出口商发货", "相符交单", "货物到港"], correct: 2 },
+  { text: "托收方式中，代收行是否承担付款责任？", options: ["承担", "不承担", "视情况而定", "部分承担"], correct: 1 },
+  { text: "以下哪项不属于预付款的优点？", options: ["收汇安全", "资金周转快", "客户易接受", "手续简单"], correct: 2 }
+];
+
+const POST_QUIZ_QUESTIONS = [
+  { text: "托收方式下进口商因反倾销税骤增拒付，不合理措施？", options: ["协商降价", "立即退运", "转售第三方", "要求银行付款"], correct: 3 },
+  { text: "信用证不符，最优先？", options: ["改证", "接受不符点折扣", "放弃货物", "起诉开证行"], correct: 0 },
+  { text: "高风险交易最安全支付组合？", options: ["100%预付款", "100%信用证", "高比例预付+信用证", "预付+托收"], correct: 2 },
+  { text: "互利共赢思维体现？", options: ["全额预付", "只接受L/C", "根据风险设计支付", "拒绝让步"], correct: 2 },
+  { text: "托收拒付成本控制性较高做法？", options: ["高价律师", "空运退回", "协商降价转售", "弃货"], correct: 2 },
+  { text: "设计混合支付首要依据？", options: ["客户喜好", "风险等级", "银行建议", "汇率"], correct: 1 },
+  { text: "信用证单据不符最直接风险？", options: ["无法结汇", "海关扣押", "运费增加", "货物损毁"], correct: 0 },
+  { text: "D/A比D/P风险更高因为？", options: ["银行不参与", "先提货后付款", "单据丢失", "手续费高"], correct: 1 },
+  { text: "预付款进口商风险如何缓解？", options: ["银行保函", "改用L/C", "提高预付", "缩短交货"], correct: 0 },
+  { text: "托收拒付货物转售最有利因素？", options: ["定制产品", "标准化产品", "到港超30天", "特殊标识"], correct: 1 }
+];
+
 let state = null;
 let selectedGroupId = localStorage.getItem("tradepilot.groupId") || "g1";
 let currentReply = dom.assistantReply.textContent;
@@ -76,6 +121,13 @@ function bindEvents() {
   [dom.groupSelect, dom.groupSelectHidden].filter(Boolean).forEach((select) => {
     select.addEventListener("change", handleGroupChange);
   });
+  [dom.preQuizStudentSelect, dom.postQuizStudentSelect, dom.mixExamStudentSelect].filter(Boolean).forEach((select) => {
+    select.addEventListener("change", () => {
+      localStorage.setItem(quizStudentKey(select.id), select.value);
+      renderQuizzes();
+      renderMixExam();
+    });
+  });
   dom.studentSelect.addEventListener("change", () => {
     localStorage.setItem(selectedStudentKey(), dom.studentSelect.value);
     renderReflectionStudentName();
@@ -89,6 +141,8 @@ function bindEvents() {
   dom.evaluationSection.addEventListener("click", handleStarSelection);
 
   dom.stageOneGrid.addEventListener("submit", handleScenarioSubmit);
+  dom.preQuizForm.addEventListener("submit", (event) => handleQuizSubmit(event, "pre"));
+  dom.postQuizForm.addEventListener("submit", (event) => handleQuizSubmit(event, "post"));
 
   dom.nextStageBtn.addEventListener("click", () => {
     localStorage.setItem(stageTwoKey(), "open");
@@ -97,9 +151,13 @@ function bindEvents() {
   });
 
   dom.mixedForm.addEventListener("submit", handleMixedSubmit);
+  dom.mixExamForm.addEventListener("submit", handleMixExamSubmit);
 
   document.querySelectorAll(".risk-select").forEach((select) => {
     select.addEventListener("change", updateRiskResult);
+  });
+  document.querySelectorAll(".mix-exam-risk-select").forEach((select) => {
+    select.addEventListener("change", updateMixExamRiskResult);
   });
 
   dom.customerCase.addEventListener("change", applyCustomerPreset);
@@ -137,8 +195,11 @@ function renderAll() {
   renderGroupSelect();
   renderGroupContext();
   renderStudentSelect();
+  renderQuizStudentSelects();
   renderReflectionStudentName();
   renderPeerTargetGroups();
+  renderQuizzes();
+  renderMixExam();
   renderSelfEvaluation();
   renderPeerEvaluation();
   renderStageOne();
@@ -197,6 +258,70 @@ function renderStudentSelect() {
     dom.studentSelect.value = fallbackValue;
     localStorage.setItem(selectedStudentKey(), fallbackValue);
   }
+}
+
+function renderQuizStudentSelects() {
+  [
+    dom.preQuizStudentSelect,
+    dom.postQuizStudentSelect,
+    dom.mixExamStudentSelect
+  ].filter(Boolean).forEach((select) => renderStudentOptions(select, quizStudentKey(select.id)));
+}
+
+function renderStudentOptions(select, storageKey) {
+  const students = state.students.filter((student) => student.groupId === selectedGroupId);
+  const savedStudentId = localStorage.getItem(storageKey);
+  const currentValue = students.some((student) => student.id === select.value) ? select.value : savedStudentId;
+  const fallbackValue = currentValue && students.some((student) => student.id === currentValue)
+    ? currentValue
+    : students[0]?.id || "";
+  select.innerHTML = students
+    .map((student) => `<option value="${student.id}" ${student.id === fallbackValue ? "selected" : ""}>${escapeHtml(student.name)}</option>`)
+    .join("");
+  if (fallbackValue) {
+    select.value = fallbackValue;
+    localStorage.setItem(storageKey, fallbackValue);
+  }
+}
+
+function quizStudentKey(selectId) {
+  return `tradepilot.${selectId}.${selectedGroupId}`;
+}
+
+function renderQuizzes() {
+  renderQuiz("pre", PRE_QUIZ_QUESTIONS, dom.preQuizQuestions);
+  renderQuiz("post", POST_QUIZ_QUESTIONS, dom.postQuizQuestions);
+  renderQuizStatus("pre", dom.preQuizStudentSelect, dom.preQuizStatus, dom.railPreQuiz);
+  renderQuizStatus("post", dom.postQuizStudentSelect, dom.postQuizStatus, dom.railPostQuiz);
+  dom.preQuizResult.hidden = true;
+  dom.postQuizResult.hidden = true;
+}
+
+function renderQuiz(type, questions, container) {
+  if (!container) return;
+  container.innerHTML = questions
+    .map((question, questionIndex) => `
+      <fieldset class="quiz-question">
+        <legend>${questionIndex + 1}. ${escapeHtml(question.text)}</legend>
+        <div class="quiz-options">
+          ${question.options.map((option, optionIndex) => `
+            <label>
+              <input type="radio" name="${type}_quiz_${questionIndex}" value="${optionIndex}" />
+              <span>${escapeHtml(option)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </fieldset>
+    `)
+    .join("");
+}
+
+function renderQuizStatus(type, select, statusElement, railElement) {
+  const attempt = getQuizAttempt(type, select?.value);
+  const done = Boolean(attempt);
+  statusElement.textContent = done ? `已提交 ${attempt.score}/${attempt.total}` : "未提交";
+  statusElement.classList.toggle("done", done);
+  railElement?.classList.toggle("done", hasGroupQuizAttempt(type));
 }
 
 function renderReflectionStudentName() {
@@ -449,6 +574,74 @@ function handleStarSelection(event) {
   }
 }
 
+async function handleQuizSubmit(event, type) {
+  event.preventDefault();
+  const questions = type === "pre" ? PRE_QUIZ_QUESTIONS : POST_QUIZ_QUESTIONS;
+  const select = type === "pre" ? dom.preQuizStudentSelect : dom.postQuizStudentSelect;
+  const resultBox = type === "pre" ? dom.preQuizResult : dom.postQuizResult;
+  const button = event.currentTarget.querySelector("button");
+  const answers = questions.map((question, index) => {
+    const selected = document.querySelector(`input[name="${type}_quiz_${index}"]:checked`);
+    const selectedIndex = selected ? Number(selected.value) : null;
+    return {
+      question: question.text,
+      selectedIndex,
+      selectedText: selectedIndex === null ? "未答" : question.options[selectedIndex],
+      correctIndex: question.correct,
+      correctText: question.options[question.correct],
+      correct: selectedIndex === question.correct
+    };
+  });
+
+  const missingIndex = answers.findIndex((answer) => answer.selectedIndex === null);
+  if (missingIndex !== -1) {
+    showToast(`请先完成第 ${missingIndex + 1} 题。`);
+    return;
+  }
+
+  const score = answers.filter((answer) => answer.correct).length;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "提交中...";
+  try {
+    const result = await api("/api/quiz-attempts", {
+      method: "POST",
+      body: {
+        quizType: type,
+        groupId: selectedGroupId,
+        studentId: select.value,
+        score,
+        total: questions.length,
+        answers
+      }
+    });
+    upsertQuizAttempt(result.attempt);
+    renderQuizzes();
+    renderQuizResult(resultBox, score, questions.length, answers);
+    showToast(`${type === "pre" ? "课前" : "课后"}小测已同步到教师看板。`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+function renderQuizResult(resultBox, score, total, answers) {
+  resultBox.hidden = false;
+  resultBox.innerHTML = `
+    <strong>得分：${score}/${total}</strong>
+    <div class="quiz-result-list">
+      ${answers.map((answer, index) => `
+        <p>
+          <span>${index + 1}. ${escapeHtml(answer.question)}</span>
+          <em class="${answer.correct ? "correct" : "wrong"}">${answer.correct ? "正确" : "需复盘"}</em>
+        </p>
+      `).join("")}
+    </div>
+  `;
+}
+
 async function handleScenarioSubmit(event) {
   event.preventDefault();
   const form = event.target.closest("form");
@@ -512,6 +705,58 @@ async function handleMixedSubmit(event) {
   } finally {
     button.disabled = false;
     button.textContent = "提交混合支付策略";
+  }
+}
+
+async function handleMixExamSubmit(event) {
+  event.preventDefault();
+  const content = dom.mixExamContent.value.trim();
+  if (!content) {
+    showToast("请先填写课后混合支付策略。");
+    return;
+  }
+
+  const risk = getMixExamRiskAssessment();
+  const analysis = getMixedPaymentDimensionFeedback({
+    content,
+    paymentStrategy: content,
+    riskLevel: risk.riskLevel
+  });
+  const score = Number((analysis.dimensions.reduce((sum, item) => sum + Number(item.score || 0), 0) / analysis.dimensions.length).toFixed(1));
+  const button = dom.mixExamForm.querySelector("button");
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "提交中...";
+
+  try {
+    const result = await api("/api/quiz-attempts", {
+      method: "POST",
+      body: {
+        quizType: "mix_exam",
+        groupId: selectedGroupId,
+        studentId: dom.mixExamStudentSelect.value,
+        score,
+        total: 10,
+        content,
+        riskLevel: risk.riskLevel,
+        riskAssessment: risk,
+        feedback: analysis.summary
+      }
+    });
+    upsertQuizAttempt(result.attempt);
+    dom.mixExamFeedback.hidden = false;
+    dom.mixExamFeedback.innerHTML = renderMixedDimensionFeedback({
+      content,
+      paymentStrategy: content,
+      riskLevel: risk.riskLevel
+    });
+    renderMixExam();
+    showToast("课后混合支付策略已同步到教师看板。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
   }
 }
 
@@ -866,9 +1111,55 @@ function updateRiskResult() {
   dom.riskLevelText.className = `level-badge ${risk.riskLevel}`;
 }
 
+function renderMixExam() {
+  const attempt = getQuizAttempt("mix_exam", dom.mixExamStudentSelect?.value);
+  const done = Boolean(attempt);
+  dom.mixExamStatus.textContent = done ? `已提交 ${Number(attempt.score || 0).toFixed(1)}/10` : "未提交";
+  dom.mixExamStatus.classList.toggle("done", done);
+  dom.railPostQuiz?.classList.toggle("done", hasGroupQuizAttempt("post") || hasGroupQuizAttempt("mix_exam"));
+
+  if (attempt?.content) {
+    dom.mixExamContent.value = attempt.content;
+    if (attempt.riskAssessment) {
+      document.querySelectorAll(".mix-exam-risk-select").forEach((select) => {
+        const value = attempt.riskAssessment?.[select.dataset.risk];
+        if (value) select.value = String(value);
+      });
+    }
+    dom.mixExamFeedback.hidden = false;
+    dom.mixExamFeedback.innerHTML = renderMixedDimensionFeedback({
+      content: attempt.content,
+      paymentStrategy: attempt.content,
+      riskLevel: attempt.riskLevel
+    });
+  } else {
+    dom.mixExamContent.value = "";
+    dom.mixExamFeedback.hidden = true;
+  }
+  updateMixExamRiskResult();
+}
+
+function updateMixExamRiskResult() {
+  const risk = getMixExamRiskAssessment();
+  dom.mixExamRiskScore.textContent = risk.totalScore;
+  dom.mixExamRiskLevelText.textContent = risk.riskLabel;
+  dom.mixExamRiskLevelText.className = `level-badge ${risk.riskLevel}`;
+}
+
 function getRiskAssessment() {
   const values = {};
   document.querySelectorAll(".risk-select").forEach((select) => {
+    values[select.dataset.risk] = Number(select.value);
+  });
+  const totalScore = Object.values(values).reduce((sum, value) => sum + value, 0);
+  const riskLevel = totalScore <= 6 ? "low" : totalScore <= 12 ? "medium" : "high";
+  const riskLabel = riskLevel === "low" ? "低风险交易" : riskLevel === "medium" ? "中风险交易" : "高风险交易";
+  return { ...values, totalScore, riskLevel, riskLabel };
+}
+
+function getMixExamRiskAssessment() {
+  const values = {};
+  document.querySelectorAll(".mix-exam-risk-select").forEach((select) => {
     values[select.dataset.risk] = Number(select.value);
   });
   const totalScore = Object.values(values).reduce((sum, value) => sum + value, 0);
@@ -882,10 +1173,27 @@ function getSubmission(scenarioCode) {
   return state.submissions.find((item) => item.groupId === selectedGroupId && item.scenarioId === scenario?.id);
 }
 
+function getQuizAttempt(quizType, studentId) {
+  return state.quizAttempts?.find((item) =>
+    item.quizType === quizType && item.groupId === selectedGroupId && item.studentId === studentId
+  );
+}
+
+function hasGroupQuizAttempt(quizType) {
+  return state.quizAttempts?.some((item) => item.quizType === quizType && item.groupId === selectedGroupId);
+}
+
 function upsertSubmission(submission) {
   const index = state.submissions.findIndex((item) => item.id === submission.id);
   if (index === -1) state.submissions.push(submission);
   else state.submissions[index] = submission;
+}
+
+function upsertQuizAttempt(attempt) {
+  state.quizAttempts ||= [];
+  const index = state.quizAttempts.findIndex((item) => item.id === attempt.id);
+  if (index === -1) state.quizAttempts.push(attempt);
+  else state.quizAttempts[index] = attempt;
 }
 
 function renderFeedback(submission, scenarioCode = "") {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>结算宝 | 外贸收汇风险课堂</title>
+    <title>结算宝 | 外贸智能风控实训系统</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="student-page">
@@ -11,7 +11,7 @@
       <header class="hero">
         <div>
           <p class="eyebrow">TradePilot Classroom</p>
-          <h1>外贸收汇风险课堂互动系统</h1>
+          <h1>外贸智能风控实训系统</h1>
           <p class="hero-copy">分阶段完成托收、信用证与混合支付任务，学生提交会实时回流到教师数据看板。</p>
         </div>
         <div class="hero-tools">
@@ -45,11 +45,33 @@
         </section>
 
         <nav class="lesson-rail" aria-label="课堂阶段进度">
+          <span class="rail-step active" id="railPreQuiz">课前小测</span>
           <span class="rail-step active" data-step="assistant">结算宝引导</span>
           <span class="rail-step active" id="railStageOne">第一阶段 0/2</span>
           <span class="rail-step" id="railStageTwo">第二阶段待解锁</span>
+          <span class="rail-step" id="railPostQuiz">课后小测</span>
           <span class="rail-step" id="railReflection">课堂反馈</span>
         </nav>
+
+        <section class="stage-section quiz-section pre-quiz-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">Before Class</p>
+              <h2><svg class="ui-icon title-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v4h4V3"/><path d="M7 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M8 12h.01"/><path d="M12 12h4"/><path d="M8 16h.01"/><path d="M12 16h4"/></svg>课前小测 · 基础支付结算知识</h2>
+              <p class="section-subtitle">先完成基础概念诊断，教师端会同步统计学生课前掌握情况。</p>
+            </div>
+            <span class="status-pill" id="preQuizStatus">未提交</span>
+          </div>
+          <form id="preQuizForm" class="quiz-form">
+            <label class="field quiz-student-picker">
+              <span>选择学生</span>
+              <select id="preQuizStudentSelect"></select>
+            </label>
+            <div id="preQuizQuestions" class="quiz-question-list"></div>
+            <button class="primary-button wide" type="submit">提交课前小测</button>
+            <div id="preQuizResult" class="quiz-result" hidden></div>
+          </form>
+        </section>
 
         <section class="assistant-panel" aria-labelledby="assistantTitle">
           <div class="assistant-content">
@@ -275,6 +297,99 @@
               <button class="primary-button wide" type="submit">提交小组互评</button>
             </form>
           </div>
+        </section>
+
+        <section class="stage-section quiz-section post-quiz-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">After Class</p>
+              <h2><svg class="ui-icon title-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>课后小测 · 收汇风险应对能力</h2>
+              <p class="section-subtitle">用选择题检查托收、信用证与混合支付风险应对能力。</p>
+            </div>
+            <span class="status-pill" id="postQuizStatus">未提交</span>
+          </div>
+          <form id="postQuizForm" class="quiz-form">
+            <label class="field quiz-student-picker">
+              <span>选择学生</span>
+              <select id="postQuizStudentSelect"></select>
+            </label>
+            <div id="postQuizQuestions" class="quiz-question-list"></div>
+            <button class="primary-button wide" type="submit">提交课后小测</button>
+            <div id="postQuizResult" class="quiz-result" hidden></div>
+          </form>
+        </section>
+
+        <section class="stage-section quiz-section mix-exam-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">After Class</p>
+              <h2><svg class="ui-icon title-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14H4V6a2 2 0 0 1 2-2h2"/><path d="M9 2h6v4H9z"/><path d="M8 13h3"/><path d="M13 13h3"/><path d="M8 17h8"/></svg>课后小测 · 混合支付策略制定（波兰客户）</h2>
+              <p class="section-subtitle">波兰客户，长期老客户、信誉良好；发达国家政策稳定；标准化普货；小额现货。</p>
+            </div>
+            <span class="status-pill" id="mixExamStatus">未提交</span>
+          </div>
+
+          <form id="mixExamForm" class="quiz-form mix-exam-form">
+            <label class="field quiz-student-picker">
+              <span>学生</span>
+              <select id="mixExamStudentSelect"></select>
+            </label>
+
+            <div class="risk-board compact-risk-board">
+              <div class="section-heading tight">
+                <span class="icon svg-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M6 7 3 14h6z"/><path d="M18 7l-3 7h6z"/><path d="M4 21h16"/></svg></span>
+                <div>
+                  <h3>风险评估表</h3>
+                  <p>按客户信息判断总分，再设计支付组合。</p>
+                </div>
+              </div>
+              <div class="risk-grid">
+                <label class="field">
+                  <span>客户信用</span>
+                  <select class="mix-exam-risk-select" data-risk="customerCredit">
+                    <option value="1">低风险</option>
+                    <option value="3">中风险</option>
+                    <option value="5">高风险</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>进口国风险</span>
+                  <select class="mix-exam-risk-select" data-risk="countryRisk">
+                    <option value="1">低风险</option>
+                    <option value="3">中风险</option>
+                    <option value="5">高风险</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>商品属性</span>
+                  <select class="mix-exam-risk-select" data-risk="productAttribute">
+                    <option value="1">低风险</option>
+                    <option value="3">中风险</option>
+                    <option value="5">高风险</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>交易规模</span>
+                  <select class="mix-exam-risk-select" data-risk="transactionScale">
+                    <option value="1">低风险</option>
+                    <option value="3">中风险</option>
+                    <option value="5">高风险</option>
+                  </select>
+                </label>
+              </div>
+              <div class="risk-result">
+                <strong>总分：<span id="mixExamRiskScore">4</span> 分</strong>
+                <strong>交易风险等级：<span class="level-badge low" id="mixExamRiskLevelText">低风险交易</span></strong>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>混合支付策略</span>
+              <textarea id="mixExamContent" rows="4" placeholder="例如：低风险，预付款10%+托收90%，因为..."></textarea>
+            </label>
+            <button class="primary-button wide" type="submit">提交策略并获取点评</button>
+            <div id="mixExamFeedback" class="feedback-box feedback-box-dimension feedback-box-mixed" hidden></div>
+          </form>
         </section>
 
         <section class="stage-section reflection-section">

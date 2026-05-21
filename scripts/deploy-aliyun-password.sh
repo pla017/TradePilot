@@ -27,6 +27,12 @@ if [[ -z "${SERVER_PASSWORD:-}" ]]; then
   exit 1
 fi
 
+if [[ "${SERVER_PASSWORD}" == "replace-with-your-server-password" ]]; then
+  echo "SERVER_PASSWORD in ${CONFIG_FILE} is still the default placeholder."
+  echo "Edit it first and replace it with the real login password for ${SERVER_USER}@${SERVER_HOST}."
+  exit 1
+fi
+
 if ! command -v sshpass >/dev/null 2>&1; then
   echo "sshpass is required for password-based non-interactive deployment."
   echo "Install it first, for example: brew install hudochenkov/sshpass/sshpass"

@@ -41,6 +41,10 @@
             <strong id="totalEvaluations">0</strong>
           </article>
           <article class="metric-card">
+            <span>课前课后</span>
+            <strong id="totalQuizAttempts">0</strong>
+          </article>
+          <article class="metric-card">
             <span>AI兜底次数</span>
             <strong id="aiFallback">0</strong>
           </article>
@@ -84,6 +88,9 @@
                     <th>托收</th>
                     <th>信用证</th>
                     <th>混合支付</th>
+                    <th>课前</th>
+                    <th>课后</th>
+                    <th>策略</th>
                     <th>自评</th>
                     <th>互评</th>
                   </tr>
@@ -101,6 +108,28 @@
               </div>
             </div>
             <div id="wordCloud" class="word-cloud"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Quiz</p>
+                <h2>课前课后小测统计</h2>
+              </div>
+            </div>
+            <div id="quizStats" class="stats-list"></div>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h2>最新小测记录</h2>
+              </div>
+            </div>
+            <div id="recentQuizAttempts" class="submission-list"></div>
           </article>
         </section>
 

@@ -6,12 +6,15 @@ const dom = {
   totalSubmissions: document.querySelector("#totalSubmissions"),
   totalReflections: document.querySelector("#totalReflections"),
   totalEvaluations: document.querySelector("#totalEvaluations"),
+  totalQuizAttempts: document.querySelector("#totalQuizAttempts"),
   aiFallback: document.querySelector("#aiFallback"),
   scenarioStats: document.querySelector("#scenarioStats"),
+  quizStats: document.querySelector("#quizStats"),
   riskBars: document.querySelector("#riskBars"),
   groupProgress: document.querySelector("#groupProgress"),
   wordCloud: document.querySelector("#wordCloud"),
   recentSubmissions: document.querySelector("#recentSubmissions"),
+  recentQuizAttempts: document.querySelector("#recentQuizAttempts"),
   evaluationBoard: document.querySelector("#evaluationBoard"),
   evaluationSummary: document.querySelector("#evaluationSummary"),
   evaluationList: document.querySelector("#evaluationList"),
@@ -48,12 +51,15 @@ function renderDashboard(data) {
   dom.totalSubmissions.textContent = dashboard.totalSubmissions;
   dom.totalReflections.textContent = dashboard.totalReflections;
   dom.totalEvaluations.textContent = dashboard.totalEvaluations;
+  dom.totalQuizAttempts.textContent = dashboard.totalQuizAttempts;
   dom.aiFallback.textContent = dashboard.aiHealth.fallback;
   renderScenarioStats(dashboard.scenarioStats);
+  renderQuizStats(dashboard.quizStats);
   renderRiskBars(dashboard.riskDistribution);
   renderGroupProgress(dashboard.groupProgress);
   renderWordCloud(dashboard.wordCloud);
   renderRecentSubmissions(dashboard.recentSubmissions);
+  renderRecentQuizAttempts(dashboard.recentQuizAttempts);
   renderEvaluationBoard(dashboard.groupProgress);
   renderEvaluations(dashboard.evaluations, dashboard.evaluationSummary);
   renderReflections(dashboard.reflections);
@@ -65,12 +71,15 @@ function normalizeDashboard(data = {}) {
     totalSubmissions: Number(data.totalSubmissions || 0),
     totalReflections: Number(data.totalReflections || 0),
     totalEvaluations: Number(data.totalEvaluations || 0),
+    totalQuizAttempts: Number(data.totalQuizAttempts || 0),
     aiHealth: { fallback: 0, ...(data.aiHealth || {}) },
     scenarioStats: Array.isArray(data.scenarioStats) ? data.scenarioStats : [],
+    quizStats: Array.isArray(data.quizStats) ? data.quizStats : [],
     riskDistribution: Array.isArray(data.riskDistribution) ? data.riskDistribution : [],
     groupProgress: Array.isArray(data.groupProgress) ? data.groupProgress : [],
     wordCloud: Array.isArray(data.wordCloud) ? data.wordCloud : [],
     recentSubmissions: Array.isArray(data.recentSubmissions) ? data.recentSubmissions : [],
+    recentQuizAttempts: Array.isArray(data.recentQuizAttempts) ? data.recentQuizAttempts : [],
     evaluations: Array.isArray(data.evaluations) ? data.evaluations : [],
     evaluationSummary: { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(data.evaluationSummary || {}) },
     reflections: Array.isArray(data.reflections) ? data.reflections : []
@@ -93,6 +102,28 @@ function renderScenarioStats(stats) {
             <div class="progress-fill" style="width:${percent}%"></div>
           </div>
           <span>${item.submittedGroups}/${item.totalGroups}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderQuizStats(stats) {
+  if (!stats.length) {
+    dom.quizStats.innerHTML = `<div class="submission-item"><p>暂无小测统计。</p></div>`;
+    return;
+  }
+
+  dom.quizStats.innerHTML = stats
+    .map((item) => {
+      const percent = item.totalStudents ? Math.round((item.submittedStudents / item.totalStudents) * 100) : 0;
+      return `
+        <div class="stat-row">
+          <strong>${escapeHtml(item.title)}</strong>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${percent}%"></div>
+          </div>
+          <span>${item.submittedStudents}/${item.totalStudents} · 均分 ${Number(item.avgScore || 0).toFixed(1)}</span>
         </div>
       `;
     })
@@ -124,7 +155,7 @@ function renderRiskBars(distribution) {
 
 function renderGroupProgress(groups) {
   if (!groups.length) {
-    dom.groupProgress.innerHTML = `<tr><td colspan="6">暂无小组数据。</td></tr>`;
+    dom.groupProgress.innerHTML = `<tr><td colspan="9">暂无小组数据。</td></tr>`;
     return;
   }
 
@@ -135,11 +166,18 @@ function renderGroupProgress(groups) {
         <td>${renderCheck(group.collection)}</td>
         <td>${renderCheck(group.lc)}</td>
         <td>${renderCheck(group.mixed)}</td>
+        <td>${renderCount(group.preQuizCount)}</td>
+        <td>${renderCount(group.postQuizCount)}</td>
+        <td>${renderCount(group.mixExamCount)}</td>
         <td>${renderEvaluationCell(group.selfAvg, group.selfCount)}</td>
         <td>${renderEvaluationCell(group.peerAvg, group.peerCount)}</td>
       </tr>
     `)
     .join("");
+}
+
+function renderCount(count) {
+  return Number(count || 0) ? `${Number(count)}人` : "-";
 }
 
 function renderEvaluationCell(avg, count) {
@@ -267,6 +305,35 @@ function renderRecentSubmissions(items) {
       </article>
     `)
     .join("");
+}
+
+function renderRecentQuizAttempts(items) {
+  if (!items.length) {
+    dom.recentQuizAttempts.innerHTML = `<div class="submission-item"><p>暂无小测记录。</p></div>`;
+    return;
+  }
+
+  dom.recentQuizAttempts.innerHTML = items
+    .map((item) => `
+      <article class="submission-item">
+        <strong>${escapeHtml(item.groupName)} · ${escapeHtml(item.studentName)} · ${escapeHtml(quizTypeLabel(item.quizType))}</strong>
+        <p>${renderQuizAttemptSummary(item)}</p>
+      </article>
+    `)
+    .join("");
+}
+
+function renderQuizAttemptSummary(item) {
+  if (item.quizType === "mix_exam") {
+    return escapeHtml(`${riskLabels[item.riskLevel] || "未判定"} · ${truncate(item.content || item.feedback || "已提交策略", 88)}`);
+  }
+  return escapeHtml(`得分 ${Number(item.score || 0)}/${Number(item.total || 0)}`);
+}
+
+function quizTypeLabel(type) {
+  if (type === "pre") return "课前小测";
+  if (type === "post") return "课后小测";
+  return "课后策略";
 }
 
 function renderTeacherMixedDimensions(item) {

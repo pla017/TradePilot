@@ -1,4 +1,4 @@
-# TradePilot 外贸收汇风险课堂互动系统
+# TradePilot 外贸智能风控实训系统
 
 ## 启动
 

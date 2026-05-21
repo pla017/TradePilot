@@ -260,7 +260,7 @@ body.teacher-page .ghost-link {
   top: 10px;
   z-index: 8;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 18px;
   padding: 10px;
@@ -792,7 +792,8 @@ body.teacher-page .metric-card {
 
 .stage-two,
 .reflection-section,
-.evaluation-section {
+.evaluation-section,
+.quiz-section {
   padding: 0 28px 34px;
   border-radius: 34px;
   background: #fff;
@@ -800,7 +801,8 @@ body.teacher-page .metric-card {
 
 .stage-two > .section-title-row,
 .reflection-section > .section-title-row,
-.evaluation-section > .section-title-row {
+.evaluation-section > .section-title-row,
+.quiz-section > .section-title-row {
   margin: 0 -28px 26px;
   padding: 34px 34px 24px;
   border-bottom: 3px solid var(--blue);
@@ -808,6 +810,121 @@ body.teacher-page .metric-card {
 
 .reflection-section > .section-title-row {
   border-bottom-color: var(--green);
+}
+
+.pre-quiz-section > .section-title-row,
+.post-quiz-section > .section-title-row {
+  border-bottom-color: var(--amber);
+}
+
+.mix-exam-section > .section-title-row {
+  border-bottom-color: var(--cyan);
+}
+
+.quiz-form {
+  display: grid;
+  gap: 22px;
+}
+
+.quiz-student-picker {
+  max-width: 260px;
+}
+
+.quiz-question-list {
+  display: grid;
+  gap: 14px;
+}
+
+.quiz-question {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px solid #d8e8f4;
+  border-radius: 18px;
+  background: #fbfdff;
+}
+
+.quiz-question legend {
+  padding: 0 4px;
+  color: #17385e;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.quiz-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+}
+
+.quiz-options label {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  color: #17385e;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.quiz-options input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+}
+
+.quiz-result {
+  padding: 18px 20px;
+  border: 1px solid #d9e7f2;
+  border-radius: 22px;
+  color: #163d62;
+  background: #f2f8fd;
+  line-height: 1.7;
+}
+
+.quiz-result strong {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--blue-dark);
+  font-size: 18px;
+}
+
+.quiz-result-list {
+  display: grid;
+  gap: 8px;
+}
+
+.quiz-result-list p {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+}
+
+.quiz-result-list em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.quiz-result-list em.correct {
+  color: #47720d;
+}
+
+.quiz-result-list em.wrong {
+  color: #b76a06;
+}
+
+.compact-risk-board {
+  margin: 0;
+  padding: 22px;
+  border-radius: 24px;
+  background: #f7fbfe;
+}
+
+.mix-exam-form .feedback-box {
+  margin-top: 0;
 }
 
 .evaluation-section {
@@ -1843,7 +1960,7 @@ body.teacher-page .dashboard-panel .section-title-row h2 {
 
 .stat-row {
   display: grid;
-  grid-template-columns: 160px 1fr 72px;
+  grid-template-columns: 180px 1fr minmax(72px, 132px);
   gap: 14px;
   align-items: center;
 }
@@ -2379,15 +2496,23 @@ body.teacher-page .reflection-item {
 
   .stage-two,
   .reflection-section,
-  .evaluation-section {
+  .evaluation-section,
+  .quiz-section {
     padding: 0 18px 24px;
   }
 
   .stage-two > .section-title-row,
   .reflection-section > .section-title-row,
-  .evaluation-section > .section-title-row {
+  .evaluation-section > .section-title-row,
+  .quiz-section > .section-title-row {
     margin: 0 -18px 20px;
     padding: 24px 20px 20px;
+  }
+
+  .quiz-options,
+  .quiz-result-list p {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .evaluation-card {

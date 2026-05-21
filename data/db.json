@@ -90,5 +90,6 @@
   "riskAssessments": [],
   "aiMessages": [],
   "reflections": [],
-  "evaluations": []
+  "evaluations": [],
+  "quizAttempts": []
 }

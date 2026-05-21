@@ -156,6 +156,11 @@ const server = http.createServer(async (req, res) => {
       return await handleEvaluation(body, res);
     }
 
+    if (url.pathname === "/api/quiz-attempts" && req.method === "POST") {
+      const body = await readBody(req);
+      return await handleQuizAttempt(body, res);
+    }
+
     if (url.pathname === "/api/ai" && req.method === "POST") {
       const body = await readBody(req);
       return await handleAi(body, res);
@@ -266,6 +271,14 @@ async function readDb() {
     FROM evaluations
     ORDER BY created_at;
   `);
+  const quizAttempts = await sqliteJson(`
+    SELECT id, quiz_type AS quizType, group_id AS groupId, student_id AS studentId,
+           student_name AS studentName, score, total, answers, content,
+           risk_level AS riskLevel, risk_assessment AS riskAssessment,
+           feedback, created_at AS createdAt, updated_at AS updatedAt
+    FROM quiz_attempts
+    ORDER BY updated_at;
+  `);
 
   return {
     groups,
@@ -282,7 +295,14 @@ async function readDb() {
     })),
     aiMessages: aiMessages.map((item) => ({ ...item, success: Boolean(item.success) })),
     reflections,
-    evaluations: evaluations.map((item) => ({ ...item, score: Number(item.score || 0) }))
+    evaluations: evaluations.map((item) => ({ ...item, score: Number(item.score || 0) })),
+    quizAttempts: quizAttempts.map((item) => ({
+      ...item,
+      score: Number(item.score || 0),
+      total: Number(item.total || 0),
+      answers: parseJsonField(item.answers, []),
+      riskAssessment: parseJsonField(item.riskAssessment, null)
+    }))
   };
 }
 
@@ -385,11 +405,31 @@ async function ensureDatabase() {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS quiz_attempts (
+      id TEXT PRIMARY KEY,
+      quiz_type TEXT NOT NULL CHECK(quiz_type IN ('pre', 'post', 'mix_exam')),
+      group_id TEXT NOT NULL REFERENCES groups(id),
+      student_id TEXT REFERENCES students(id),
+      student_name TEXT NOT NULL,
+      score REAL NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL DEFAULT 0,
+      answers TEXT NOT NULL DEFAULT '[]',
+      content TEXT,
+      risk_level TEXT,
+      risk_assessment TEXT,
+      feedback TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(quiz_type, student_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_submissions_group ON submissions(group_id);
     CREATE INDEX IF NOT EXISTS idx_ai_messages_group ON ai_messages(group_id);
     CREATE INDEX IF NOT EXISTS idx_reflections_group ON reflections(group_id);
     CREATE INDEX IF NOT EXISTS idx_evaluations_group ON evaluations(group_id);
     CREATE INDEX IF NOT EXISTS idx_evaluations_target ON evaluations(target_group_id);
+    CREATE INDEX IF NOT EXISTS idx_quiz_attempts_group ON quiz_attempts(group_id);
+    CREATE INDEX IF NOT EXISTS idx_quiz_attempts_type ON quiz_attempts(quiz_type);
   `);
 
   const existing = await sqliteJson("SELECT COUNT(*) AS count FROM groups;");
@@ -455,6 +495,7 @@ async function saveDynamicData(db) {
     "DELETE FROM ai_messages;",
     "DELETE FROM reflections;",
     "DELETE FROM evaluations;",
+    "DELETE FROM quiz_attempts;",
     ...db.submissions.map((item) =>
       insertSql("submissions", {
         id: item.id,
@@ -522,6 +563,24 @@ async function saveDynamicData(db) {
         created_at: item.createdAt
       })
     ),
+    ...db.quizAttempts.map((item) =>
+      insertSql("quiz_attempts", {
+        id: item.id,
+        quiz_type: item.quizType,
+        group_id: item.groupId,
+        student_id: item.studentId || null,
+        student_name: item.studentName || "学生",
+        score: Number(item.score || 0),
+        total: Number(item.total || 0),
+        answers: JSON.stringify(item.answers || []),
+        content: item.content || "",
+        risk_level: item.riskLevel || null,
+        risk_assessment: item.riskAssessment ? JSON.stringify(item.riskAssessment) : null,
+        feedback: item.feedback || "",
+        created_at: item.createdAt,
+        updated_at: item.updatedAt
+      })
+    ),
     "COMMIT;",
     "PRAGMA foreign_keys = ON;"
   ];
@@ -537,6 +596,7 @@ async function resetClassroomData() {
     DELETE FROM ai_messages;
     DELETE FROM reflections;
     DELETE FROM evaluations;
+    DELETE FROM quiz_attempts;
     COMMIT;
     PRAGMA foreign_keys = ON;
   `);
@@ -704,6 +764,58 @@ async function handleEvaluation(body, res) {
     };
     db.evaluations.push(evaluation);
     return { evaluation };
+  });
+
+  if (result.error) return sendJson(res, { error: result.error }, result.status || 400);
+  return sendJson(res, result);
+}
+
+async function handleQuizAttempt(body, res) {
+  const result = await updateDb(async (db) => {
+    const quizType = ["pre", "post", "mix_exam"].includes(body.quizType) ? body.quizType : "";
+    const group = db.groups.find((item) => item.id === body.groupId);
+    const student = db.students.find((item) => item.id === body.studentId && item.groupId === body.groupId);
+    if (!quizType) return { error: "小测类型不存在。", status: 400 };
+    if (!group) return { error: "请选择小组。", status: 400 };
+    if (!student) return { error: "请选择学生。", status: 400 };
+
+    const now = new Date().toISOString();
+    const previous = db.quizAttempts.find((item) => item.quizType === quizType && item.studentId === student.id);
+    const attempt = previous || {
+      id: createId("quiz"),
+      quizType,
+      groupId: group.id,
+      studentId: student.id,
+      studentName: student.name,
+      createdAt: now
+    };
+
+    const total = Math.max(0, Number(body.total || 0));
+    const score = Number(body.score || 0);
+    const content = String(body.content || "").trim();
+    if (quizType === "mix_exam" && content.length < 4) {
+      return { error: "请先填写混合支付策略。", status: 400 };
+    }
+    if (quizType !== "mix_exam" && (!Array.isArray(body.answers) || !total)) {
+      return { error: "请先完成小测题目。", status: 400 };
+    }
+
+    Object.assign(attempt, {
+      groupId: group.id,
+      studentId: student.id,
+      studentName: student.name,
+      score: Number.isFinite(score) ? Math.max(0, Math.min(score, total || 10)) : 0,
+      total,
+      answers: Array.isArray(body.answers) ? body.answers : [],
+      content,
+      riskLevel: body.riskLevel || null,
+      riskAssessment: body.riskAssessment || null,
+      feedback: String(body.feedback || "").trim(),
+      updatedAt: now
+    });
+
+    if (!previous) db.quizAttempts.push(attempt);
+    return { attempt };
   });
 
   if (result.error) return sendJson(res, { error: result.error }, result.status || 400);
@@ -1018,6 +1130,10 @@ function buildDashboard(db) {
       groupName: group?.name || "未知小组"
     };
   });
+  const quizAttempts = db.quizAttempts.map((attempt) => ({
+    ...attempt,
+    groupName: db.groups.find((group) => group.id === attempt.groupId)?.name || "未知小组"
+  }));
 
   const scenarioStats = db.scenarios.map((scenario) => {
     const items = submissions.filter((item) => item.scenarioId === scenario.id);
@@ -1043,12 +1159,16 @@ function buildDashboard(db) {
     const groupSubmissions = submissions.filter((item) => item.groupId === group.id);
     const selfItems = db.evaluations.filter((item) => item.type === "self" && item.groupId === group.id);
     const peerItems = db.evaluations.filter((item) => item.type === "peer" && item.targetGroupId === group.id);
+    const groupQuizAttempts = quizAttempts.filter((item) => item.groupId === group.id);
     return {
       groupId: group.id,
       groupName: group.name,
       collection: Boolean(groupSubmissions.find((item) => item.scenarioCode === "collection_crisis")),
       lc: Boolean(groupSubmissions.find((item) => item.scenarioCode === "lc_crisis")),
       mixed: Boolean(groupSubmissions.find((item) => item.scenarioCode === "mixed_payment")),
+      preQuizCount: groupQuizAttempts.filter((item) => item.quizType === "pre").length,
+      postQuizCount: groupQuizAttempts.filter((item) => item.quizType === "post").length,
+      mixExamCount: groupQuizAttempts.filter((item) => item.quizType === "mix_exam").length,
       avgScore: groupSubmissions.length
         ? Math.round(groupSubmissions.reduce((sum, item) => sum + Number(item.score || 0), 0) / groupSubmissions.length)
         : 0,
@@ -1056,6 +1176,20 @@ function buildDashboard(db) {
       selfAvg: averageScore(selfItems),
       peerCount: peerItems.length,
       peerAvg: averageScore(peerItems)
+    };
+  });
+  const quizStats = ["pre", "post", "mix_exam"].map((type) => {
+    const items = quizAttempts.filter((item) => item.quizType === type);
+    const avgScore = items.length
+      ? Number((items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length).toFixed(1))
+      : 0;
+    return {
+      type,
+      title: quizTypeLabel(type),
+      submittedStudents: new Set(items.map((item) => item.studentId)).size,
+      totalStudents: db.students.length,
+      avgScore,
+      total: type === "mix_exam" ? 10 : 10
     };
   });
 
@@ -1080,12 +1214,17 @@ function buildDashboard(db) {
     totalSubmissions: submissions.length,
     totalReflections: db.reflections.length,
     totalEvaluations: db.evaluations.length,
+    totalQuizAttempts: quizAttempts.length,
     scenarioStats,
+    quizStats,
     riskDistribution,
     groupProgress,
     evaluationSummary,
     evaluations: evaluations.slice(0, 40),
     recentSubmissions: submissions
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .slice(0, 20),
+    recentQuizAttempts: quizAttempts
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 20),
     reflections: db.reflections.slice(-30).reverse(),
@@ -1102,6 +1241,21 @@ function averageScore(items) {
   return items.length
     ? Number((items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length).toFixed(1))
     : 0;
+}
+
+function quizTypeLabel(type) {
+  if (type === "pre") return "课前小测";
+  if (type === "post") return "课后小测";
+  return "课后混合支付策略";
+}
+
+function parseJsonField(value, fallback) {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
 }
 
 function hasSubmitted(db, groupId, scenarioCode) {

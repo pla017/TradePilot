@@ -14,7 +14,7 @@
 https://chat.deepseek.com/share/jbonx2w3k7ns0hk4gt
 
 deepseek API key:
-sk-e10bdfb9287c41028607efa0082c9282
+sk-e07d60cae0284311ad7feec444dcb51d
 
 开发要求：
 

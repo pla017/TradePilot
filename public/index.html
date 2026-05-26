@@ -28,7 +28,6 @@
           <div class="group-current">
             <p class="eyebrow">当前提交小组</p>
             <h2 id="currentGroupName">第1组</h2>
-            <p id="currentGroupHint">本页所有方案、课堂收获都会记录到当前小组。</p>
           </div>
           <div class="group-progress-mini" aria-label="本组提交进度">
             <span id="miniCollection">托收：待交</span>
@@ -175,11 +174,11 @@
               <p>订单金额21000美元（中等）</p>
               </div>
               <div class="customer-card">
-              <h3>AE 阿联酋 ZAK 公司</h3>
-              <p>新客户、无合作记录</p>
-              <p>阿联酋政局经济稳定、外汇流通自由、外贸秩序规范</p>
-              <p>1800套陶瓷餐具（定制品）</p>
-              <p>订单金额15000美元（中等）</p>
+              <h3>阿联酋 ZAK 公司</h3>
+              <p><strong>客户信用：</strong>新客户，无合作记录</p>
+              <p><strong>进口国风险：</strong>阿联酋政局经济稳定、外汇流通自由、外贸秩序规范</p>
+              <p><strong>商品属性：</strong>1800套陶瓷餐具（定制品）</p>
+              <p><strong>交易规模：</strong>订单金额为15000美元，金额中等</p>
               </div>
             </div>
 
@@ -187,7 +186,7 @@
               <span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>选择客户案例：</span>
               <select id="customerCase">
                 <option value="SG 新加坡客户">SG 新加坡客户</option>
-                <option value="AE 阿联酋 ZAK 公司">AE 阿联酋 ZAK 公司</option>
+                <option value="AE 阿联酋 ZAK 公司" selected>阿联酋 ZAK 公司</option>
               </select>
             </label>
           </div>
@@ -204,6 +203,7 @@
               <label class="field">
                 <span>客户信用</span>
                 <select class="risk-select" data-risk="customerCredit">
+                  <option value="" selected>请选择</option>
                   <option value="1">低风险</option>
                   <option value="3">中风险</option>
                   <option value="5">高风险</option>
@@ -212,6 +212,7 @@
               <label class="field">
                 <span>进口国风险</span>
                 <select class="risk-select" data-risk="countryRisk">
+                  <option value="" selected>请选择</option>
                   <option value="1">低风险</option>
                   <option value="3">中风险</option>
                   <option value="5">高风险</option>
@@ -220,6 +221,7 @@
               <label class="field">
                 <span>商品属性</span>
                 <select class="risk-select" data-risk="productAttribute">
+                  <option value="" selected>请选择</option>
                   <option value="1">低风险</option>
                   <option value="3">中风险</option>
                   <option value="5">高风险</option>
@@ -228,22 +230,23 @@
               <label class="field">
                 <span>交易规模</span>
                 <select class="risk-select" data-risk="transactionScale">
+                  <option value="" selected>请选择</option>
                   <option value="1">低风险</option>
                   <option value="3">中风险</option>
-                  <option value="5" selected>高风险</option>
+                  <option value="5">高风险</option>
                 </select>
               </label>
             </div>
             <div class="risk-result">
-              <strong>总分：<span id="riskScore">8</span> 分</strong>
-              <strong>交易风险等级：<span class="level-badge" id="riskLevelText">中风险交易</span></strong>
+              <strong>总分：<span id="riskScore">--</span> 分</strong>
+              <strong>交易风险等级：<span class="level-badge" id="riskLevelText">待评估</span></strong>
             </div>
           </div>
 
           <form class="scenario-card full" id="mixedForm">
             <label class="field">
               <span>混合支付策略（先写风险等级，再写支付组合及百分比）</span>
-              <textarea id="mixedContent" rows="6" placeholder="例如：我判断为低风险，建议20%预付款+80%托收，因为..."></textarea>
+              <textarea id="mixedContent" rows="6" placeholder="例如：我判断为高风险，建议50%预付款+50%信用证，因为..."></textarea>
             </label>
             <button class="primary-button wide" type="submit">提交混合支付策略</button>
             <div class="feedback-box" id="mixedFeedback" hidden></div>

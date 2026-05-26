@@ -2,7 +2,6 @@ const dom = {
   groupSelect: document.querySelector("#groupSelect"),
   groupSelectHidden: document.querySelector("#groupSelectHidden"),
   currentGroupName: document.querySelector("#currentGroupName"),
-  currentGroupHint: document.querySelector("#currentGroupHint"),
   miniCollection: document.querySelector("#miniCollection"),
   miniLc: document.querySelector("#miniLc"),
   miniMixed: document.querySelector("#miniMixed"),
@@ -160,7 +159,6 @@ function bindEvents() {
     select.addEventListener("change", updateMixExamRiskResult);
   });
 
-  dom.customerCase.addEventListener("change", applyCustomerPreset);
   dom.selfEvaluationForm.addEventListener("submit", handleSelfEvaluationSubmit);
   dom.peerEvaluationForm.addEventListener("submit", handlePeerEvaluationSubmit);
   dom.reflectionForm.addEventListener("submit", handleReflectionSubmit);
@@ -208,7 +206,6 @@ function renderAll() {
     "done",
     state.reflections.some((item) => item.groupId === selectedGroupId)
   );
-  applyCustomerPreset();
   updateRiskResult();
 }
 
@@ -226,7 +223,6 @@ function renderGroupContext() {
   const group = state.groups.find((item) => item.id === selectedGroupId);
   const groupName = currentGroupName();
   dom.currentGroupName.textContent = groupName;
-  dom.currentGroupHint.textContent = `${groupName} 的托收、信用证、混合支付方案会同步到教师看板。`;
 
   setMiniStatus(dom.miniCollection, "托收", Boolean(getSubmission("collection_crisis")));
   setMiniStatus(dom.miniLc, "信用证", Boolean(getSubmission("lc_crisis")));
@@ -685,6 +681,10 @@ async function handleMixedSubmit(event) {
   button.textContent = "提交中...";
   try {
     const risk = getRiskAssessment();
+    if (!risk.complete) {
+      showToast("请先手工完成四项风险评估。");
+      return;
+    }
     const result = await api("/api/submissions", {
       method: "POST",
       body: {
@@ -1084,36 +1084,11 @@ function speak(text, options = {}) {
   window.speechSynthesis.speak(utterance);
 }
 
-function applyCustomerPreset() {
-  const selects = Object.fromEntries(
-    Array.from(document.querySelectorAll(".risk-select")).map((select) => [select.dataset.risk, select])
-  );
-
-  if (dom.customerCase.value.startsWith("SG")) {
-    selects.customerCredit.value = "1";
-    selects.countryRisk.value = "1";
-    selects.productAttribute.value = "1";
-    selects.transactionScale.value = "1";
-  } else if (dom.customerCase.value.startsWith("AE")) {
-    selects.customerCredit.value = "5";
-    selects.countryRisk.value = "1";
-    selects.productAttribute.value = "5";
-    selects.transactionScale.value = "3";
-  } else {
-    selects.customerCredit.value = "5";
-    selects.countryRisk.value = "5";
-    selects.productAttribute.value = "3";
-    selects.transactionScale.value = "3";
-  }
-
-  updateRiskResult();
-}
-
 function updateRiskResult() {
   const risk = getRiskAssessment();
-  dom.riskScore.textContent = risk.totalScore;
+  dom.riskScore.textContent = risk.complete ? risk.totalScore : "--";
   dom.riskLevelText.textContent = risk.riskLabel;
-  dom.riskLevelText.className = `level-badge ${risk.riskLevel}`;
+  dom.riskLevelText.className = risk.complete ? `level-badge ${risk.riskLevel}` : "level-badge";
 }
 
 function renderMixExam() {
@@ -1153,13 +1128,17 @@ function updateMixExamRiskResult() {
 
 function getRiskAssessment() {
   const values = {};
+  let complete = true;
   document.querySelectorAll(".risk-select").forEach((select) => {
-    values[select.dataset.risk] = Number(select.value);
+    if (!select.value) complete = false;
+    values[select.dataset.risk] = Number(select.value || 0);
   });
   const totalScore = Object.values(values).reduce((sum, value) => sum + value, 0);
   const riskLevel = totalScore <= 6 ? "low" : totalScore <= 12 ? "medium" : "high";
-  const riskLabel = riskLevel === "low" ? "低风险交易" : riskLevel === "medium" ? "中风险交易" : "高风险交易";
-  return { ...values, totalScore, riskLevel, riskLabel };
+  const riskLabel = complete
+    ? riskLevel === "low" ? "低风险交易" : riskLevel === "medium" ? "中风险交易" : "高风险交易"
+    : "待评估";
+  return { ...values, totalScore, riskLevel, riskLabel, complete };
 }
 
 function getMixExamRiskAssessment() {

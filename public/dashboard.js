@@ -28,6 +28,20 @@ const riskLabels = {
   high: "高风险"
 };
 
+const SELF_EVALUATION_DIMENSIONS = [
+  "学习态度",
+  "协作贡献",
+  "风险应对能力",
+  "素养体悟",
+  "商业思维领悟"
+];
+
+const PEER_EVALUATION_DIMENSIONS = [
+  "参与贡献度",
+  "沟通表达",
+  "团队协作"
+];
+
 loadDashboard();
 dom.refreshBtn.addEventListener("click", loadDashboard);
 dom.exportBtn.addEventListener("click", exportData);
@@ -441,6 +455,8 @@ function inferRiskLevelFromText(text) {
 
 function renderEvaluations(items, summary) {
   const safeSummary = { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(summary || {}) };
+  const selfItems = items.filter((item) => item.type === "self");
+  const peerItems = items.filter((item) => item.type === "peer");
 
   dom.evaluationSummary.innerHTML = `
     <span>自评 ${safeSummary.selfCount || 0} 条</span>
@@ -452,19 +468,133 @@ function renderEvaluations(items, summary) {
     return;
   }
 
-  dom.evaluationList.innerHTML = items
-    .map((item) => {
-      const title = item.type === "self"
-        ? `自评 · ${escapeHtml(item.groupName)}`
-        : `互评 · ${escapeHtml(item.groupName)} → ${escapeHtml(item.targetGroupName)}`;
-      return `
-        <article class="reflection-item evaluation-item">
-          <strong>${title}</strong>
-          <p>${escapeHtml(item.studentName)}：${escapeHtml(item.content)}</p>
-        </article>
-      `;
+  dom.evaluationList.innerHTML = `
+    <section class="teacher-evaluation-section">
+      <div class="teacher-evaluation-head">
+        <strong>自评明细</strong>
+        <span>${selfItems.length} 条</span>
+      </div>
+      <div class="teacher-evaluation-cards">
+        ${selfItems.length ? selfItems.map(renderSelfEvaluationCard).join("") : `<div class="reflection-item"><p>暂无自评记录。</p></div>`}
+      </div>
+    </section>
+    <section class="teacher-evaluation-section">
+      <div class="teacher-evaluation-head">
+        <strong>互评明细</strong>
+        <span>${peerItems.length} 条</span>
+      </div>
+      <div class="teacher-evaluation-cards">
+        ${peerItems.length ? peerItems.map(renderPeerEvaluationCard).join("") : `<div class="reflection-item"><p>暂无互评记录。</p></div>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderSelfEvaluationCard(item) {
+  const parsed = parseSelfEvaluationContent(item.content);
+  return `
+    <article class="reflection-item teacher-evaluation-card">
+      <div class="teacher-evaluation-card-head">
+        <div>
+          <strong>${escapeHtml(item.studentName)}</strong>
+          <p>${escapeHtml(item.groupName)} · 自评均分 ${Number(item.score || 0).toFixed(1)} 星</p>
+        </div>
+      </div>
+      ${parsed.dimensions.length ? `
+        <div class="teacher-score-grid">
+          ${parsed.dimensions.map((dimension) => `
+            <div class="teacher-score-row">
+              <span>${escapeHtml(dimension.label)}</span>
+              <div class="teacher-score-stars">${renderScoreStars(dimension.score)}</div>
+              <strong>${dimension.score}星</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : `<p>${escapeHtml(item.content)}</p>`}
+    </article>
+  `;
+}
+
+function renderPeerEvaluationCard(item) {
+  const parsed = parsePeerEvaluationContent(item.content);
+  return `
+    <article class="reflection-item teacher-evaluation-card">
+      <div class="teacher-evaluation-card-head">
+        <div>
+          <strong>${escapeHtml(item.targetGroupName || "目标小组")}</strong>
+          <p>${escapeHtml(item.groupName)} 发起互评 · ${escapeHtml(item.studentName)}提交 · 互评均分 ${Number(item.score || 0).toFixed(1)} 星</p>
+        </div>
+      </div>
+      ${parsed.members.length ? `
+        <div class="teacher-peer-members">
+          ${parsed.members.map((member) => `
+            <section class="teacher-peer-member">
+              <strong>${escapeHtml(member.name)}</strong>
+              <div class="teacher-score-grid compact">
+                ${member.dimensions.map((dimension) => `
+                  <div class="teacher-score-row">
+                    <span>${escapeHtml(dimension.label)}</span>
+                    <div class="teacher-score-stars">${renderScoreStars(dimension.score)}</div>
+                    <strong>${dimension.score}星</strong>
+                  </div>
+                `).join("")}
+              </div>
+            </section>
+          `).join("")}
+        </div>
+      ` : `<p>${escapeHtml(item.content)}</p>`}
+    </article>
+  `;
+}
+
+function parseSelfEvaluationContent(content) {
+  const text = String(content || "");
+  const dimensions = SELF_EVALUATION_DIMENSIONS
+    .map((label) => {
+      const match = text.match(new RegExp(`${escapeRegExp(label)}\\s*(\\d+(?:\\.\\d+)?)星`));
+      return match ? { label, score: Number(match[1]) } : null;
     })
-    .join("");
+    .filter(Boolean);
+  return { dimensions };
+}
+
+function parsePeerEvaluationContent(content) {
+  const text = String(content || "");
+  const detailText = text
+    .replace(/^对.+?的互评[:：]/, "")
+    .replace(/。综合均分[\s\S]*$/, "")
+    .trim();
+
+  const members = detailText
+    .split(/[；;]/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((chunk) => {
+      const match = chunk.match(/^(.+?)[（(](.+?)[）)]$/);
+      if (!match) return null;
+      const [, name, rawDimensions] = match;
+      const dimensions = PEER_EVALUATION_DIMENSIONS
+        .map((label) => {
+          const scoreMatch = rawDimensions.match(new RegExp(`${escapeRegExp(label)}\\s*(\\d+(?:\\.\\d+)?)星`));
+          return scoreMatch ? { label, score: Number(scoreMatch[1]) } : null;
+        })
+        .filter(Boolean);
+      return dimensions.length ? { name, dimensions } : null;
+    })
+    .filter(Boolean);
+
+  return { members };
+}
+
+function renderScoreStars(score) {
+  const rounded = Math.max(0, Math.min(5, Math.round(Number(score || 0))));
+  return Array.from({ length: 5 }, (_, index) => `
+    <span class="teacher-score-star ${index < rounded ? "active" : ""}">★</span>
+  `).join("");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderReflections(items) {

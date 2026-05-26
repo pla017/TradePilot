@@ -1094,6 +1094,11 @@ function applyCustomerPreset() {
     selects.countryRisk.value = "1";
     selects.productAttribute.value = "1";
     selects.transactionScale.value = "1";
+  } else if (dom.customerCase.value.startsWith("AE")) {
+    selects.customerCredit.value = "5";
+    selects.countryRisk.value = "1";
+    selects.productAttribute.value = "5";
+    selects.transactionScale.value = "3";
   } else {
     selects.customerCredit.value = "5";
     selects.countryRisk.value = "5";

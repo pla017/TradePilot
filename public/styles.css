@@ -2254,6 +2254,130 @@ body.teacher-page .reflection-item {
   background: linear-gradient(90deg, #245f88, #54a6c0);
 }
 
+.teacher-evaluation-section {
+  display: grid;
+  gap: 14px;
+}
+
+.teacher-evaluation-section + .teacher-evaluation-section {
+  margin-top: 18px;
+}
+
+.teacher-evaluation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teacher-evaluation-head strong {
+  color: #15395b;
+  font-size: 20px;
+}
+
+.teacher-evaluation-head span {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #245f88;
+  background: #eef6fb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.teacher-evaluation-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.teacher-evaluation-card {
+  display: grid;
+  gap: 14px;
+}
+
+.teacher-evaluation-card-head strong {
+  margin-bottom: 6px;
+}
+
+.teacher-evaluation-card-head p {
+  margin: 0;
+}
+
+.teacher-score-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.teacher-score-grid.compact {
+  gap: 8px;
+}
+
+.teacher-score-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.teacher-score-row span {
+  color: #214f75;
+  font-weight: 800;
+}
+
+.teacher-score-row strong {
+  margin: 0;
+  color: #15395b;
+  font-size: 14px;
+}
+
+.teacher-score-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.teacher-score-star {
+  color: #d6dde6;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.teacher-score-star.active {
+  color: #ffb53f;
+}
+
+.teacher-peer-members {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-peer-member {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dce8f2;
+  border-radius: 18px;
+  background: #f5f9fd;
+}
+
+.teacher-peer-member > strong {
+  margin: 0;
+  color: #15395b;
+  font-size: 16px;
+}
+
+body.teacher-page .teacher-peer-member > strong {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #1e5a84;
+  background: #e9f4fb;
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -2422,6 +2546,16 @@ body.teacher-page .reflection-item {
 
   .radar-chart {
     min-height: 340px;
+  }
+
+  .teacher-score-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .teacher-evaluation-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

@@ -36,19 +36,20 @@ body.student-page {
 }
 
 body.teacher-page {
-  --ink: #10233d;
-  --muted: #62738b;
-  --line: #d4dde7;
-  --panel-soft: #f4f7fb;
-  --blue: #245f88;
-  --blue-dark: #163f61;
-  --cyan: #4aa6c6;
-  --green: #5f8f3e;
-  --amber: #b9852d;
-  --shadow: 0 22px 50px rgba(16, 35, 61, 0.1);
+  --ink: #eaf7ff;
+  --muted: #94b8d6;
+  --line: rgba(79, 193, 255, 0.26);
+  --panel-soft: rgba(10, 42, 82, 0.78);
+  --blue: #26a8ff;
+  --blue-dark: #8bd8ff;
+  --cyan: #31e3ff;
+  --green: #9be26b;
+  --amber: #ffd36b;
+  --shadow: 0 24px 58px rgba(0, 10, 38, 0.34);
   background:
-    radial-gradient(circle at top right, rgba(36, 95, 136, 0.08), transparent 24%),
-    linear-gradient(180deg, #eef3f8 0%, #f7fafd 34%, #edf2f7 100%);
+    radial-gradient(circle at 16% 12%, rgba(38, 168, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgba(49, 227, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, #031634 0%, #06244b 48%, #031124 100%);
 }
 
 button,
@@ -117,10 +118,11 @@ body.teacher-page .app-shell {
 body.teacher-page .dashboard-hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(88, 211, 255, 0.34);
   background:
-    linear-gradient(135deg, rgba(13, 34, 56, 0.97), rgba(27, 71, 105, 0.96)),
-    radial-gradient(circle at 88% 18%, rgba(102, 180, 210, 0.28), transparent 24%);
+    linear-gradient(135deg, rgba(6, 28, 65, 0.98), rgba(9, 75, 126, 0.94)),
+    radial-gradient(circle at 88% 18%, rgba(49, 227, 255, 0.35), transparent 24%);
+  box-shadow: 0 28px 70px rgba(0, 15, 48, 0.5), inset 0 0 38px rgba(49, 227, 255, 0.08);
 }
 
 body.teacher-page .dashboard-hero::after {
@@ -136,21 +138,25 @@ body.teacher-page .dashboard-hero::after {
 
 body.teacher-page .hero-copy {
   max-width: 780px;
-  color: rgba(235, 243, 250, 0.82);
+  color: rgba(234, 247, 255, 0.82);
 }
 
 body.teacher-page .soft-button {
-  color: #173652;
-  background: #e7eef6;
+  border-color: rgba(88, 211, 255, 0.42);
+  color: #eaf7ff;
+  background: rgba(12, 54, 104, 0.72);
 }
 
 body.teacher-page .danger-button {
-  background: linear-gradient(135deg, #9f4037, #7f2d28);
+  border-color: rgba(255, 122, 122, 0.5);
+  color: #fff2f2;
+  background: linear-gradient(135deg, rgba(176, 62, 72, 0.92), rgba(119, 35, 52, 0.9));
 }
 
 body.teacher-page .ghost-link {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(88, 211, 255, 0.36);
+  color: #d8f4ff;
+  background: rgba(24, 94, 150, 0.58);
 }
 
 .eyebrow {
@@ -395,10 +401,10 @@ body.teacher-page .ghost-link {
 
 body.teacher-page .dashboard-panel,
 body.teacher-page .metric-card {
-  border-color: #d5dde6;
+  border-color: rgba(88, 211, 255, 0.24);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 252, 0.98));
-  box-shadow: 0 16px 38px rgba(22, 47, 74, 0.08);
+    linear-gradient(180deg, rgba(9, 43, 82, 0.9), rgba(5, 24, 56, 0.92));
+  box-shadow: 0 22px 48px rgba(0, 10, 36, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .assistant-panel {
@@ -1572,7 +1578,7 @@ body.teacher-page .metric-card {
 }
 
 .evaluation-grid-score {
-  align-items: start;
+  align-items: stretch;
 }
 
 .evaluation-card-self,
@@ -1581,6 +1587,15 @@ body.teacher-page .metric-card {
   padding: 24px;
   border-radius: 30px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 255, 0.98));
+}
+
+.evaluation-card-self {
+  min-height: 100%;
+}
+
+.evaluation-card-self .primary-button {
+  align-self: end;
+  margin-top: auto;
 }
 
 .evaluation-panel-head {
@@ -1909,7 +1924,7 @@ body.teacher-page .metric-card::before {
   inset: 0 auto 0 0;
   width: 6px;
   border-radius: 34px 0 0 34px;
-  background: linear-gradient(180deg, #245f88, #69a7c3);
+  background: linear-gradient(180deg, #31e3ff, #267aff);
 }
 
 .metric-card span {
@@ -1946,16 +1961,168 @@ body.teacher-page .metric-card::before {
 body.teacher-page .dashboard-panel .section-title-row {
   margin-bottom: 18px;
   padding-bottom: 14px;
-  border-bottom: 1px solid #e4eaf1;
+  border-bottom: 1px solid rgba(88, 211, 255, 0.18);
 }
 
 body.teacher-page .dashboard-panel .section-title-row h2 {
+  color: #f2fbff;
   font-size: 30px;
+}
+
+body.teacher-page .metric-card span,
+body.teacher-page .dashboard-panel .eyebrow {
+  color: #8fc3e8;
+}
+
+body.teacher-page .metric-card strong {
+  color: #f2fbff;
+  text-shadow: 0 0 18px rgba(49, 227, 255, 0.24);
 }
 
 .stats-list {
   display: grid;
   gap: 14px;
+}
+
+.dashboard-data-note {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(88, 211, 255, 0.26);
+  border-radius: 16px;
+  color: #b8daf0;
+  background: rgba(8, 44, 86, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stat-demo-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #7a5420;
+  background: #fff2d9;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.quiz-chart-stack {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.dashboard-chart-card {
+  padding: 18px;
+  border: 1px solid rgba(88, 211, 255, 0.24);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(49, 227, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(8, 44, 86, 0.82), rgba(5, 25, 58, 0.82));
+}
+
+.dashboard-chart-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.dashboard-chart-head strong {
+  color: #f2fbff;
+  font-size: 20px;
+}
+
+.dashboard-chart-head span {
+  color: #8fb9d7;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dashboard-chart {
+  min-height: 280px;
+}
+
+.dashboard-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  color: #b7d8ee;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.chart-legend i {
+  width: 22px;
+  height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(36, 95, 136, 0.16);
+}
+
+.chart-empty {
+  display: grid;
+  min-height: 250px;
+  place-items: center;
+  border: 1px dashed rgba(88, 211, 255, 0.24);
+  border-radius: 18px;
+  color: #9dc7df;
+  background: rgba(4, 25, 58, 0.5);
+  font-weight: 900;
+}
+
+.chart-axis {
+  stroke: rgba(157, 211, 242, 0.68);
+  stroke-width: 1.4;
+}
+
+.chart-grid-line {
+  stroke: rgba(119, 180, 220, 0.18);
+  stroke-width: 1;
+}
+
+.chart-y-label,
+.chart-x-label,
+.chart-point-label {
+  fill: #acd3ed;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.chart-x-label-group {
+  font-size: 12px;
+}
+
+.chart-bar {
+  filter: drop-shadow(0 8px 10px rgba(36, 95, 136, 0.14));
+}
+
+.chart-line {
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 6px 8px rgba(36, 95, 136, 0.14));
+}
+
+.chart-point {
+  stroke: #fff;
+  stroke-width: 2.5;
 }
 
 .stat-row {
@@ -1975,7 +2142,7 @@ body.teacher-page .dashboard-panel .section-title-row h2 {
 
 body.teacher-page .progress-track,
 body.teacher-page .risk-track {
-  background: #e9eff5;
+  background: rgba(116, 176, 216, 0.16);
 }
 
 .progress-fill,
@@ -1987,7 +2154,8 @@ body.teacher-page .risk-track {
 
 body.teacher-page .progress-fill,
 body.teacher-page .risk-fill {
-  background: linear-gradient(90deg, #245f88, #58a3bf);
+  background: linear-gradient(90deg, #26a8ff, #31e3ff);
+  box-shadow: 0 0 16px rgba(49, 227, 255, 0.35);
 }
 
 .risk-bars {
@@ -2025,14 +2193,19 @@ th {
 }
 
 body.teacher-page th {
-  color: #607189;
+  color: #9ec9e2;
   font-size: 13px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
+body.teacher-page td {
+  color: #dcefff;
+  border-bottom-color: rgba(88, 211, 255, 0.14);
+}
+
 body.teacher-page tr:hover td {
-  background: rgba(36, 95, 136, 0.03);
+  background: rgba(49, 227, 255, 0.07);
 }
 
 .check {
@@ -2048,7 +2221,8 @@ body.teacher-page tr:hover td {
 }
 
 body.teacher-page .check {
-  background: #edf2f7;
+  color: #9db8cf;
+  background: rgba(149, 182, 211, 0.16);
 }
 
 .check.ok {
@@ -2057,8 +2231,8 @@ body.teacher-page .check {
 }
 
 body.teacher-page .check.ok {
-  color: #41692a;
-  background: #e3f0d6;
+  color: #dfffc5;
+  background: rgba(155, 226, 107, 0.2);
 }
 
 .word-cloud {
@@ -2076,10 +2250,10 @@ body.teacher-page .check.ok {
 
 body.teacher-page .word-cloud {
   border-style: solid;
-  border-color: #d8e2ec;
+  border-color: rgba(88, 211, 255, 0.24);
   background:
-    linear-gradient(135deg, rgba(36, 95, 136, 0.06), rgba(96, 143, 62, 0.05)),
-    #fcfdff;
+    radial-gradient(circle at 20% 15%, rgba(49, 227, 255, 0.16), transparent 36%),
+    linear-gradient(135deg, rgba(10, 56, 104, 0.82), rgba(4, 25, 58, 0.92));
 }
 
 .word-cloud canvas {
@@ -2116,8 +2290,8 @@ body.teacher-page .word-cloud {
   align-items: center;
   padding: 0 13px;
   border-radius: 999px;
-  color: #245f88;
-  background: #eef6fb;
+  color: #d8f4ff;
+  background: rgba(38, 168, 255, 0.18);
   font-weight: 900;
 }
 
@@ -2132,14 +2306,14 @@ body.teacher-page .word-cloud {
   display: grid;
   gap: 8px;
   padding: 16px 16px 14px;
-  border: 1px solid #d9e7f1;
+  border: 1px solid rgba(88, 211, 255, 0.22);
   border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff, #f7fbfe);
-  box-shadow: 0 10px 22px rgba(31, 117, 168, 0.06);
+  background: linear-gradient(180deg, rgba(8, 44, 86, 0.78), rgba(5, 25, 58, 0.84));
+  box-shadow: 0 12px 26px rgba(0, 10, 36, 0.22);
 }
 
 .evaluation-board-card > strong {
-  color: #15395b;
+  color: #f2fbff;
   font-size: 18px;
 }
 
@@ -2152,11 +2326,11 @@ body.teacher-page .word-cloud {
 }
 
 .evaluation-board-row + .evaluation-board-row {
-  border-top: 1px dashed #dbe6ee;
+  border-top: 1px dashed rgba(88, 211, 255, 0.18);
 }
 
 .evaluation-board-label {
-  color: #5b7288;
+  color: #9cc5df;
   font-size: 13px;
   font-weight: 800;
 }
@@ -2177,7 +2351,7 @@ body.teacher-page .word-cloud {
 }
 
 .evaluation-board-meta {
-  color: #66778b;
+  color: #9dbbd2;
   font-size: 13px;
   font-weight: 700;
 }
@@ -2192,9 +2366,14 @@ body.teacher-page .word-cloud {
 
 body.teacher-page .submission-item,
 body.teacher-page .reflection-item {
-  border-color: #dbe3ec;
+  border-color: rgba(88, 211, 255, 0.22);
   border-radius: 22px;
-  background: linear-gradient(180deg, #ffffff, #f7fafd);
+  background: linear-gradient(180deg, rgba(8, 44, 86, 0.74), rgba(5, 25, 58, 0.82));
+}
+
+body.teacher-page .submission-item strong,
+body.teacher-page .reflection-item strong {
+  color: #f2fbff;
 }
 
 .submission-item strong,
@@ -2215,9 +2394,9 @@ body.teacher-page .reflection-item {
   gap: 12px;
   margin-top: 14px;
   padding: 14px;
-  border: 1px solid #dce8f2;
+  border: 1px solid rgba(88, 211, 255, 0.2);
   border-radius: 18px;
-  background: #f4f9fd;
+  background: rgba(4, 25, 58, 0.46);
 }
 
 .teacher-mixed-dimension {
@@ -2230,14 +2409,14 @@ body.teacher-page .reflection-item {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  color: #1d5b85;
+  color: #b7d8ee;
   font-size: 14px;
   font-weight: 900;
 }
 
 .teacher-mixed-dimension-head strong {
   margin: 0;
-  color: #15395b;
+  color: #f2fbff;
   font-size: 14px;
 }
 
@@ -2245,13 +2424,13 @@ body.teacher-page .reflection-item {
   overflow: hidden;
   height: 9px;
   border-radius: 999px;
-  background: #e4edf5;
+  background: rgba(116, 176, 216, 0.16);
 }
 
 .teacher-mixed-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #245f88, #54a6c0);
+  background: linear-gradient(90deg, #26a8ff, #31e3ff);
 }
 
 .teacher-evaluation-section {
@@ -2271,7 +2450,7 @@ body.teacher-page .reflection-item {
 }
 
 .teacher-evaluation-head strong {
-  color: #15395b;
+  color: #f2fbff;
   font-size: 20px;
 }
 
@@ -2281,8 +2460,8 @@ body.teacher-page .reflection-item {
   align-items: center;
   padding: 0 12px;
   border-radius: 999px;
-  color: #245f88;
-  background: #eef6fb;
+  color: #d8f4ff;
+  background: rgba(38, 168, 255, 0.18);
   font-size: 13px;
   font-weight: 900;
 }
@@ -2322,13 +2501,13 @@ body.teacher-page .reflection-item {
 }
 
 .teacher-score-row span {
-  color: #214f75;
+  color: #b7d8ee;
   font-weight: 800;
 }
 
 .teacher-score-row strong {
   margin: 0;
-  color: #15395b;
+  color: #f2fbff;
   font-size: 14px;
 }
 
@@ -2338,7 +2517,7 @@ body.teacher-page .reflection-item {
 }
 
 .teacher-score-star {
-  color: #d6dde6;
+  color: rgba(179, 207, 226, 0.42);
   font-size: 18px;
   line-height: 1;
 }
@@ -2356,14 +2535,14 @@ body.teacher-page .reflection-item {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid #dce8f2;
+  border: 1px solid rgba(88, 211, 255, 0.2);
   border-radius: 18px;
-  background: #f5f9fd;
+  background: rgba(4, 25, 58, 0.46);
 }
 
 .teacher-peer-member > strong {
   margin: 0;
-  color: #15395b;
+  color: #f2fbff;
   font-size: 16px;
 }
 
@@ -2374,8 +2553,8 @@ body.teacher-page .teacher-peer-member > strong {
   align-items: center;
   padding: 0 12px;
   border-radius: 999px;
-  color: #1e5a84;
-  background: #e9f4fb;
+  color: #d8f4ff;
+  background: rgba(38, 168, 255, 0.2);
 }
 
 .toast {

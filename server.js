@@ -235,7 +235,8 @@ async function readBody(req) {
 
 async function readDb() {
   const groups = await sqliteJson("SELECT id, name FROM groups ORDER BY id;");
-  const students = await sqliteJson("SELECT id, group_id AS groupId, name FROM students ORDER BY id;");
+  const students = (await sqliteJson("SELECT id, group_id AS groupId, name FROM students ORDER BY id;"))
+    .filter((student) => !isGroupRepresentativeName(student.name));
   const scenarios = await sqliteJson("SELECT id, code, title, phase, sort_order AS sortOrder, description FROM scenarios ORDER BY sort_order;");
   const submissions = await sqliteJson(`
     SELECT id, group_id AS groupId, scenario_id AS scenarioId, student_id AS studentId,
@@ -259,26 +260,26 @@ async function readDb() {
     FROM ai_messages
     ORDER BY created_at;
   `);
-  const reflections = await sqliteJson(`
+  const reflections = (await sqliteJson(`
     SELECT id, group_id AS groupId, student_id AS studentId, student_name AS studentName,
            content, created_at AS createdAt
     FROM reflections
     ORDER BY created_at;
-  `);
-  const evaluations = await sqliteJson(`
+  `)).filter((item) => !isGroupRepresentativeName(item.studentName));
+  const evaluations = (await sqliteJson(`
     SELECT id, type, group_id AS groupId, student_id AS studentId, student_name AS studentName,
            target_group_id AS targetGroupId, score, content, created_at AS createdAt
     FROM evaluations
     ORDER BY created_at;
-  `);
-  const quizAttempts = await sqliteJson(`
+  `)).filter((item) => !isGroupRepresentativeName(item.studentName));
+  const quizAttempts = (await sqliteJson(`
     SELECT id, quiz_type AS quizType, group_id AS groupId, student_id AS studentId,
            student_name AS studentName, score, total, answers, content,
            risk_level AS riskLevel, risk_assessment AS riskAssessment,
            feedback, created_at AS createdAt, updated_at AS updatedAt
     FROM quiz_attempts
     ORDER BY updated_at;
-  `);
+  `)).filter((item) => !isGroupRepresentativeName(item.studentName));
 
   return {
     groups,
@@ -304,6 +305,10 @@ async function readDb() {
       riskAssessment: parseJsonField(item.riskAssessment, null)
     }))
   };
+}
+
+function isGroupRepresentativeName(name) {
+  return /^第(?:[1-7]|[一二三四五六七])组代表$/.test(String(name || "").trim());
 }
 
 async function updateDb(mutator) {
@@ -436,10 +441,12 @@ async function ensureDatabase() {
   const seed = JSON.parse(await fs.readFile(SEED_FILE, "utf8"));
   if (Number(existing[0]?.count || 0) > 0) {
     await syncStaticData(seed);
+    await removeGroupRepresentativeStudents();
     return;
   }
 
   await seedStaticData(seed);
+  await removeGroupRepresentativeStudents();
 }
 
 async function seedStaticData(seed) {
@@ -484,6 +491,29 @@ async function syncStaticData(seed) {
     "COMMIT;"
   ];
   await sqliteExec(statements.join("\n"));
+}
+
+async function removeGroupRepresentativeStudents() {
+  await sqliteExec(`
+    BEGIN IMMEDIATE;
+    UPDATE submissions
+      SET student_id = NULL
+      WHERE student_id IN (SELECT id FROM students WHERE name GLOB '第*组代表');
+    UPDATE ai_messages
+      SET student_id = NULL
+      WHERE student_id IN (SELECT id FROM students WHERE name GLOB '第*组代表');
+    UPDATE reflections
+      SET student_id = NULL
+      WHERE student_id IN (SELECT id FROM students WHERE name GLOB '第*组代表');
+    UPDATE evaluations
+      SET student_id = NULL
+      WHERE student_id IN (SELECT id FROM students WHERE name GLOB '第*组代表');
+    UPDATE quiz_attempts
+      SET student_id = NULL
+      WHERE student_id IN (SELECT id FROM students WHERE name GLOB '第*组代表');
+    DELETE FROM students WHERE name GLOB '第*组代表';
+    COMMIT;
+  `);
 }
 
 async function saveDynamicData(db) {
@@ -1192,6 +1222,8 @@ function buildDashboard(db) {
       total: type === "mix_exam" ? 10 : 10
     };
   });
+  const quizQuestionStats = buildQuizQuestionStats(quizAttempts);
+  const quizGroupStats = buildQuizGroupStats(db.groups, quizAttempts);
 
   const evaluationSummary = {
     total: db.evaluations.length,
@@ -1217,6 +1249,8 @@ function buildDashboard(db) {
     totalQuizAttempts: quizAttempts.length,
     scenarioStats,
     quizStats,
+    quizQuestionStats,
+    quizGroupStats,
     riskDistribution,
     groupProgress,
     evaluationSummary,
@@ -1235,6 +1269,72 @@ function buildDashboard(db) {
       fallback: db.aiMessages.filter((item) => !item.success).length
     }
   };
+}
+
+function buildQuizQuestionStats(quizAttempts) {
+  const questionCount = Math.max(
+    10,
+    ...quizAttempts
+      .filter((item) => item.quizType === "pre" || item.quizType === "post")
+      .map((item) => Number(item.total || item.answers?.length || 0))
+  );
+
+  return Array.from({ length: questionCount }, (_, index) => {
+    const pre = averageQuestionScore(quizAttempts, "pre", index);
+    const post = averageQuestionScore(quizAttempts, "post", index);
+    return {
+      questionNo: index + 1,
+      preAvg: pre.avg,
+      preCount: pre.count,
+      postAvg: post.avg,
+      postCount: post.count
+    };
+  });
+}
+
+function averageQuestionScore(quizAttempts, quizType, questionIndex) {
+  const answers = quizAttempts
+    .filter((item) => item.quizType === quizType)
+    .map((item) => item.answers?.[questionIndex])
+    .filter(Boolean);
+
+  if (!answers.length) return { avg: 0, count: 0 };
+  const score = answers.reduce((sum, answer) => sum + (answer.correct ? 1 : 0), 0);
+  return {
+    avg: Number((score / answers.length).toFixed(2)),
+    count: answers.length
+  };
+}
+
+function buildQuizGroupStats(groups, quizAttempts) {
+  return groups.map((group) => {
+    const byType = (type) => {
+      const items = quizAttempts.filter((item) => item.groupId === group.id && item.quizType === type);
+      const avg = items.length
+        ? items.reduce((sum, item) => sum + normalizeQuizScore(item), 0) / items.length
+        : 0;
+      return { avg: Number(avg.toFixed(1)), count: items.length };
+    };
+    const pre = byType("pre");
+    const post = byType("post");
+    const mix = byType("mix_exam");
+    return {
+      groupId: group.id,
+      groupName: group.name,
+      preAvg: pre.avg,
+      preCount: pre.count,
+      postAvg: post.avg,
+      postCount: post.count,
+      mixAvg: mix.avg,
+      mixCount: mix.count
+    };
+  });
+}
+
+function normalizeQuizScore(item) {
+  const total = Number(item.total || 10);
+  const score = Number(item.score || 0);
+  return total ? (score / total) * 10 : 0;
 }
 
 function averageScore(items) {

@@ -183,10 +183,21 @@ function handleGroupChange(event) {
 }
 
 async function loadState() {
-  state = await api("/api/bootstrap");
+  state = normalizeBootstrapState(await api("/api/bootstrap"));
   if (!state.groups.some((group) => group.id === selectedGroupId)) {
     selectedGroupId = state.groups[0]?.id || "g1";
   }
+}
+
+function normalizeBootstrapState(rawState) {
+  return {
+    ...rawState,
+    students: (rawState.students || []).filter((student) => !isGroupRepresentativeStudent(student))
+  };
+}
+
+function isGroupRepresentativeStudent(student) {
+  return /^第(?:[1-7]|[一二三四五六七])组代表$/.test(String(student?.name || "").trim());
 }
 
 function renderAll() {

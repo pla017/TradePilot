@@ -10,6 +10,9 @@ const dom = {
   aiFallback: document.querySelector("#aiFallback"),
   scenarioStats: document.querySelector("#scenarioStats"),
   quizStats: document.querySelector("#quizStats"),
+  quizDemoNote: document.querySelector("#quizDemoNote"),
+  quizQuestionChart: document.querySelector("#quizQuestionChart"),
+  quizGroupChart: document.querySelector("#quizGroupChart"),
   riskBars: document.querySelector("#riskBars"),
   groupProgress: document.querySelector("#groupProgress"),
   wordCloud: document.querySelector("#wordCloud"),
@@ -42,6 +45,23 @@ const PEER_EVALUATION_DIMENSIONS = [
   "团队协作"
 ];
 
+const DEMO_QUIZ_STATS = {
+  pre: { submittedRate: 0.78, avgScore: 6.8 },
+  post: { submittedRate: 0.84, avgScore: 7.5 },
+  mix_exam: { submittedRate: 0.76, avgScore: 8.1 }
+};
+
+const DEMO_QUESTION_AVERAGES = {
+  pre: [0.62, 0.58, 0.71, 0.65, 0.76, 0.69, 0.54, 0.6, 0.73, 0.67],
+  post: [0.78, 0.72, 0.84, 0.8, 0.86, 0.75, 0.69, 0.74, 0.82, 0.79]
+};
+
+const DEMO_GROUP_AVERAGES = {
+  pre: [6.8, 6.2, 7.1, 6.5, 7.4, 6.9, 7.0],
+  post: [7.6, 7.1, 8.0, 7.3, 8.2, 7.8, 7.9],
+  mix_exam: [8.1, 7.6, 8.4, 7.9, 8.6, 8.0, 8.3]
+};
+
 loadDashboard();
 dom.refreshBtn.addEventListener("click", loadDashboard);
 dom.exportBtn.addEventListener("click", exportData);
@@ -68,7 +88,10 @@ function renderDashboard(data) {
   dom.totalQuizAttempts.textContent = dashboard.totalQuizAttempts;
   dom.aiFallback.textContent = dashboard.aiHealth.fallback;
   renderScenarioStats(dashboard.scenarioStats);
-  renderQuizStats(dashboard.quizStats);
+  const quizDisplay = buildQuizDisplayData(dashboard);
+  renderQuizStats(quizDisplay.stats);
+  renderQuizCharts(quizDisplay.questionStats, quizDisplay.groupStats);
+  renderQuizDemoNote(quizDisplay.usesDemo);
   renderRiskBars(dashboard.riskDistribution);
   renderGroupProgress(dashboard.groupProgress);
   renderWordCloud(dashboard.wordCloud);
@@ -77,6 +100,81 @@ function renderDashboard(data) {
   renderEvaluationBoard(dashboard.groupProgress);
   renderEvaluations(dashboard.evaluations, dashboard.evaluationSummary);
   renderReflections(dashboard.reflections);
+}
+
+function buildQuizDisplayData(dashboard) {
+  const stats = dashboard.quizStats.map((item) => applyDemoQuizStat(item));
+  const questionStats = buildDisplayQuestionStats(dashboard.quizQuestionStats);
+  const groupStats = buildDisplayGroupStats(dashboard.quizGroupStats);
+  return {
+    stats,
+    questionStats,
+    groupStats,
+    usesDemo: stats.some((item) => item.isDemo) ||
+      questionStats.some((item) => item.preDemo || item.postDemo) ||
+      groupStats.some((item) => item.preDemo || item.postDemo || item.mixDemo)
+  };
+}
+
+function applyDemoQuizStat(item) {
+  if (Number(item.submittedStudents || 0) > 0) return { ...item, isDemo: false };
+
+  const demo = DEMO_QUIZ_STATS[item.type] || { submittedRate: 0.75, avgScore: 7.0 };
+  const totalStudents = Number(item.totalStudents || 0);
+  const submittedStudents = totalStudents ? Math.max(1, Math.round(totalStudents * demo.submittedRate)) : 0;
+  return {
+    ...item,
+    submittedStudents,
+    avgScore: demo.avgScore,
+    isDemo: true
+  };
+}
+
+function buildDisplayQuestionStats(stats) {
+  const rows = stats.length ? stats : Array.from({ length: 10 }, (_, index) => ({ questionNo: index + 1 }));
+  return rows.map((item, index) => {
+    const hasPre = Number(item.preCount || 0) > 0;
+    const hasPost = Number(item.postCount || 0) > 0;
+    return {
+      ...item,
+      preAvg: hasPre ? Number(item.preAvg || 0) : demoQuestionAverage("pre", index),
+      preCount: hasPre ? item.preCount : 1,
+      preDemo: !hasPre,
+      postAvg: hasPost ? Number(item.postAvg || 0) : demoQuestionAverage("post", index),
+      postCount: hasPost ? item.postCount : 1,
+      postDemo: !hasPost
+    };
+  });
+}
+
+function demoQuestionAverage(type, index) {
+  const values = DEMO_QUESTION_AVERAGES[type] || [];
+  return Number((values[index % values.length] || 0.7).toFixed(2));
+}
+
+function buildDisplayGroupStats(stats) {
+  return stats.map((item, index) => {
+    const hasPre = Number(item.preCount || 0) > 0;
+    const hasPost = Number(item.postCount || 0) > 0;
+    const hasMix = Number(item.mixCount || 0) > 0;
+    return {
+      ...item,
+      preAvg: hasPre ? Number(item.preAvg || 0) : demoGroupAverage("pre", index),
+      preCount: hasPre ? item.preCount : 1,
+      preDemo: !hasPre,
+      postAvg: hasPost ? Number(item.postAvg || 0) : demoGroupAverage("post", index),
+      postCount: hasPost ? item.postCount : 1,
+      postDemo: !hasPost,
+      mixAvg: hasMix ? Number(item.mixAvg || 0) : demoGroupAverage("mix_exam", index),
+      mixCount: hasMix ? item.mixCount : 1,
+      mixDemo: !hasMix
+    };
+  });
+}
+
+function demoGroupAverage(type, index) {
+  const values = DEMO_GROUP_AVERAGES[type] || [];
+  return Number((values[index % values.length] || 7.5).toFixed(1));
 }
 
 function normalizeDashboard(data = {}) {
@@ -89,6 +187,8 @@ function normalizeDashboard(data = {}) {
     aiHealth: { fallback: 0, ...(data.aiHealth || {}) },
     scenarioStats: Array.isArray(data.scenarioStats) ? data.scenarioStats : [],
     quizStats: Array.isArray(data.quizStats) ? data.quizStats : [],
+    quizQuestionStats: Array.isArray(data.quizQuestionStats) ? data.quizQuestionStats : [],
+    quizGroupStats: Array.isArray(data.quizGroupStats) ? data.quizGroupStats : [],
     riskDistribution: Array.isArray(data.riskDistribution) ? data.riskDistribution : [],
     groupProgress: Array.isArray(data.groupProgress) ? data.groupProgress : [],
     wordCloud: Array.isArray(data.wordCloud) ? data.wordCloud : [],
@@ -133,7 +233,7 @@ function renderQuizStats(stats) {
       const percent = item.totalStudents ? Math.round((item.submittedStudents / item.totalStudents) * 100) : 0;
       return `
         <div class="stat-row">
-          <strong>${escapeHtml(item.title)}</strong>
+          <strong>${escapeHtml(item.title)}${item.isDemo ? `<em class="stat-demo-badge">演示</em>` : ""}</strong>
           <div class="progress-track">
             <div class="progress-fill" style="width:${percent}%"></div>
           </div>
@@ -142,6 +242,142 @@ function renderQuizStats(stats) {
       `;
     })
     .join("");
+}
+
+function renderQuizDemoNote(usesDemo) {
+  if (!dom.quizDemoNote) return;
+  dom.quizDemoNote.hidden = !usesDemo;
+}
+
+function renderQuizCharts(questionStats, groupStats) {
+  renderQuizQuestionChart(questionStats);
+  renderQuizGroupChart(groupStats);
+}
+
+function renderQuizQuestionChart(stats) {
+  if (!stats.some((item) => Number(item.preCount || 0) || Number(item.postCount || 0))) {
+    dom.quizQuestionChart.innerHTML = `<div class="chart-empty">等待学生完成课前/课后小测</div>`;
+    return;
+  }
+
+  const labels = stats.map((item) => `Q${item.questionNo}`);
+  dom.quizQuestionChart.innerHTML = renderGroupedBarChart({
+    labels,
+    maxValue: 1,
+    tickCount: 5,
+    valueSuffix: "",
+    series: [
+      { name: stats.some((item) => item.preDemo) ? "课前（含演示）" : "课前", color: "#245f88", values: stats.map((item) => Number(item.preAvg || 0)) },
+      { name: stats.some((item) => item.postDemo) ? "课后（含演示）" : "课后", color: "#f59f32", values: stats.map((item) => Number(item.postAvg || 0)) }
+    ]
+  });
+}
+
+function renderQuizGroupChart(stats) {
+  if (!stats.some((item) => Number(item.preCount || 0) || Number(item.postCount || 0) || Number(item.mixCount || 0))) {
+    dom.quizGroupChart.innerHTML = `<div class="chart-empty">等待各小组提交小测数据</div>`;
+    return;
+  }
+
+  const labels = stats.map((item) => item.groupName);
+  dom.quizGroupChart.innerHTML = renderLineChart({
+    labels,
+    maxValue: 10,
+    tickCount: 5,
+    series: [
+      { name: stats.some((item) => item.preDemo) ? "课前（含演示）" : "课前", color: "#245f88", values: stats.map((item) => Number(item.preAvg || 0)) },
+      { name: stats.some((item) => item.postDemo) ? "课后（含演示）" : "课后", color: "#f59f32", values: stats.map((item) => Number(item.postAvg || 0)) },
+      { name: stats.some((item) => item.mixDemo) ? "策略（含演示）" : "策略", color: "#36b6d4", values: stats.map((item) => Number(item.mixAvg || 0)) }
+    ]
+  });
+}
+
+function renderGroupedBarChart({ labels, series, maxValue, tickCount }) {
+  const width = 760;
+  const height = 300;
+  const margin = { top: 28, right: 24, bottom: 58, left: 48 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const groupWidth = chartWidth / Math.max(labels.length, 1);
+  const barWidth = Math.min(18, (groupWidth - 18) / Math.max(series.length, 1));
+  const y = (value) => margin.top + chartHeight - (Math.max(0, Math.min(maxValue, value)) / maxValue) * chartHeight;
+
+  return `
+    ${renderChartLegend(series)}
+    <svg class="dashboard-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="每题均分统计图">
+      ${renderYAxis({ width, margin, chartHeight, maxValue, tickCount })}
+      ${labels.map((label, index) => {
+        const x = margin.left + index * groupWidth + groupWidth / 2;
+        return `<text class="chart-x-label" x="${x}" y="${height - 24}" text-anchor="middle">${escapeHtml(label)}</text>`;
+      }).join("")}
+      ${series.map((serie, serieIndex) =>
+        serie.values.map((value, index) => {
+          const center = margin.left + index * groupWidth + groupWidth / 2;
+          const x = center - ((series.length * barWidth + (series.length - 1) * 5) / 2) + serieIndex * (barWidth + 5);
+          const barY = y(value);
+          const barHeight = margin.top + chartHeight - barY;
+          return `<rect class="chart-bar" x="${x}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="5" fill="${serie.color}"><title>${escapeHtml(serie.name)} ${escapeHtml(labels[index])}: ${Number(value || 0).toFixed(2)}</title></rect>`;
+        }).join("")
+      ).join("")}
+    </svg>
+  `;
+}
+
+function renderLineChart({ labels, series, maxValue, tickCount }) {
+  const width = 760;
+  const height = 310;
+  const margin = { top: 30, right: 30, bottom: 70, left: 48 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const x = (index) => margin.left + (labels.length <= 1 ? chartWidth / 2 : (index / (labels.length - 1)) * chartWidth);
+  const y = (value) => margin.top + chartHeight - (Math.max(0, Math.min(maxValue, value)) / maxValue) * chartHeight;
+
+  return `
+    ${renderChartLegend(series)}
+    <svg class="dashboard-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="各组平均分统计图">
+      ${renderYAxis({ width, margin, chartHeight, maxValue, tickCount })}
+      ${labels.map((label, index) => `
+        <text class="chart-x-label chart-x-label-group" x="${x(index)}" y="${height - 38}" text-anchor="middle">${escapeHtml(label)}</text>
+      `).join("")}
+      ${series.map((serie) => {
+        const points = serie.values.map((value, index) => `${x(index)},${y(value)}`).join(" ");
+        return `
+          <polyline class="chart-line" points="${points}" fill="none" stroke="${serie.color}" />
+          ${serie.values.map((value, index) => `
+            <circle class="chart-point" cx="${x(index)}" cy="${y(value)}" r="5" fill="${serie.color}">
+              <title>${escapeHtml(serie.name)} ${escapeHtml(labels[index])}: ${Number(value || 0).toFixed(1)}分</title>
+            </circle>
+            <text class="chart-point-label" x="${x(index)}" y="${y(value) - 10}" text-anchor="middle">${Number(value || 0).toFixed(1)}</text>
+          `).join("")}
+        `;
+      }).join("")}
+    </svg>
+  `;
+}
+
+function renderChartLegend(series) {
+  return `
+    <div class="chart-legend">
+      ${series.map((item) => `
+        <span><i style="background:${item.color}"></i>${escapeHtml(item.name)}</span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderYAxis({ width, margin, chartHeight, maxValue, tickCount }) {
+  const ticks = Array.from({ length: tickCount + 1 }, (_, index) => Number(((maxValue / tickCount) * index).toFixed(2)));
+  return `
+    <line class="chart-axis" x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${width - margin.right}" y2="${margin.top + chartHeight}" />
+    <line class="chart-axis" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" />
+    ${ticks.map((tick) => {
+      const y = margin.top + chartHeight - (tick / maxValue) * chartHeight;
+      return `
+        <line class="chart-grid-line" x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" />
+        <text class="chart-y-label" x="${margin.left - 12}" y="${y + 4}" text-anchor="end">${tick % 1 === 0 ? tick : tick.toFixed(1)}</text>
+      `;
+    }).join("")}
+  `;
 }
 
 function renderRiskBars(distribution) {

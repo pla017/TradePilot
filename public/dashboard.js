@@ -17,6 +17,7 @@ const dom = {
   groupProgress: document.querySelector("#groupProgress"),
   wordCloud: document.querySelector("#wordCloud"),
   recentSubmissions: document.querySelector("#recentSubmissions"),
+  submissionTabs: document.querySelectorAll("[data-scenario-filter]"),
   recentQuizAttempts: document.querySelector("#recentQuizAttempts"),
   evaluationBoard: document.querySelector("#evaluationBoard"),
   evaluationSummary: document.querySelector("#evaluationSummary"),
@@ -45,6 +46,8 @@ const PEER_EVALUATION_DIMENSIONS = [
   "团队协作"
 ];
 
+let selectedSubmissionScenario = "collection_crisis";
+
 const DEMO_QUIZ_STATS = {
   pre: { submittedRate: 0.78, avgScore: 6.8 },
   post: { submittedRate: 0.84, avgScore: 7.5 },
@@ -66,6 +69,13 @@ loadDashboard();
 dom.refreshBtn.addEventListener("click", loadDashboard);
 dom.exportBtn.addEventListener("click", exportData);
 dom.resetBtn.addEventListener("click", resetData);
+dom.submissionTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedSubmissionScenario = button.dataset.scenarioFilter || "collection_crisis";
+    renderSubmissionTabs();
+    loadDashboard();
+  });
+});
 setInterval(loadDashboard, 5000);
 window.addEventListener("resize", debounce(loadDashboard, 240));
 
@@ -541,12 +551,14 @@ function intersects(a, b) {
 }
 
 function renderRecentSubmissions(items) {
-  if (!items.length) {
-    dom.recentSubmissions.innerHTML = `<div class="submission-item"><p>暂无提交。</p></div>`;
+  renderSubmissionTabs();
+  const filteredItems = items.filter((item) => item.scenarioCode === selectedSubmissionScenario);
+  if (!filteredItems.length) {
+    dom.recentSubmissions.innerHTML = `<div class="submission-item"><p>暂无${escapeHtml(scenarioFilterLabel(selectedSubmissionScenario))}提交。</p></div>`;
     return;
   }
 
-  dom.recentSubmissions.innerHTML = items
+  dom.recentSubmissions.innerHTML = filteredItems
     .map((item) => `
       <article class="submission-item">
         <strong>${escapeHtml(item.groupName)} · ${escapeHtml(item.scenarioTitle)}</strong>
@@ -555,6 +567,19 @@ function renderRecentSubmissions(items) {
       </article>
     `)
     .join("");
+}
+
+function renderSubmissionTabs() {
+  dom.submissionTabs.forEach((button) => {
+    button.classList.toggle("active", button.dataset.scenarioFilter === selectedSubmissionScenario);
+  });
+}
+
+function scenarioFilterLabel(code) {
+  if (code === "collection_crisis") return "托收方案";
+  if (code === "lc_crisis") return "信用证方案";
+  if (code === "mixed_payment") return "混合支付方案";
+  return "方案";
 }
 
 function renderRecentQuizAttempts(items) {
@@ -692,7 +717,6 @@ function inferRiskLevelFromText(text) {
 function renderEvaluations(items, summary) {
   const safeSummary = { selfCount: 0, peerCount: 0, selfAvg: null, peerAvg: null, ...(summary || {}) };
   const selfItems = items.filter((item) => item.type === "self");
-  const peerItems = items.filter((item) => item.type === "peer");
 
   dom.evaluationSummary.innerHTML = `
     <span>自评 ${safeSummary.selfCount || 0} 条</span>
@@ -700,7 +724,17 @@ function renderEvaluations(items, summary) {
   `;
 
   if (!items.length) {
-    dom.evaluationList.innerHTML = `<div class="reflection-item"><p>暂无自评或互评。</p></div>`;
+    dom.evaluationList.innerHTML = `
+      <section class="teacher-evaluation-section">
+        <div class="teacher-evaluation-head">
+          <strong>自评明细</strong>
+          <span>0 条</span>
+        </div>
+        <div class="teacher-evaluation-cards">
+          <div class="reflection-item"><p>暂无自评记录。</p></div>
+        </div>
+      </section>
+    `;
     return;
   }
 
@@ -712,15 +746,6 @@ function renderEvaluations(items, summary) {
       </div>
       <div class="teacher-evaluation-cards">
         ${selfItems.length ? selfItems.map(renderSelfEvaluationCard).join("") : `<div class="reflection-item"><p>暂无自评记录。</p></div>`}
-      </div>
-    </section>
-    <section class="teacher-evaluation-section">
-      <div class="teacher-evaluation-head">
-        <strong>互评明细</strong>
-        <span>${peerItems.length} 条</span>
-      </div>
-      <div class="teacher-evaluation-cards">
-        ${peerItems.length ? peerItems.map(renderPeerEvaluationCard).join("") : `<div class="reflection-item"><p>暂无互评记录。</p></div>`}
       </div>
     </section>
   `;

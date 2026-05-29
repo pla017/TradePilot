@@ -72,7 +72,7 @@
           </article>
         </section>
 
-        <section class="dashboard-grid wide-left">
+        <section class="dashboard-grid group-word-section">
           <article class="dashboard-panel">
             <div class="section-title-row">
               <div>
@@ -99,6 +99,59 @@
               </table>
             </div>
           </article>
+        </section>
+
+        <section class="dashboard-grid wide-right">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h2>最新小测记录</h2>
+              </div>
+            </div>
+            <div id="recentQuizAttempts" class="submission-list"></div>
+          </article>
+
+          <article class="dashboard-panel dashboard-panel-submissions">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h2>最新方案提交</h2>
+              </div>
+            </div>
+            <div class="submission-tabs" role="tablist" aria-label="方案类型筛选">
+              <button class="active" type="button" data-scenario-filter="collection_crisis">托收</button>
+              <button type="button" data-scenario-filter="lc_crisis">信用证</button>
+              <button type="button" data-scenario-filter="mixed_payment">混合支付方式</button>
+            </div>
+            <div id="recentSubmissions" class="submission-list"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid wide-right">
+          <article class="dashboard-panel dashboard-panel-evaluation">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Evaluation</p>
+                <h2>自评与互评记录</h2>
+              </div>
+            </div>
+            <div id="evaluationBoard" class="evaluation-board"></div>
+            <div id="evaluationSummary" class="evaluation-summary"></div>
+            <div id="evaluationList" class="reflection-list"></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid wide-right">
+          <article class="dashboard-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Feedback</p>
+                <h2>课堂收获原文</h2>
+              </div>
+            </div>
+            <div id="reflectionList" class="reflection-list"></div>
+          </article>
 
           <article class="dashboard-panel">
             <div class="section-title-row">
@@ -111,7 +164,7 @@
           </article>
         </section>
 
-        <section class="dashboard-grid">
+        <section class="dashboard-grid group-word-section">
           <article class="dashboard-panel">
             <div class="section-title-row">
               <div>
@@ -137,52 +190,6 @@
                 <div id="quizGroupChart" class="dashboard-chart"></div>
               </section>
             </div>
-          </article>
-
-          <article class="dashboard-panel">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">Recent</p>
-                <h2>最新小测记录</h2>
-              </div>
-            </div>
-            <div id="recentQuizAttempts" class="submission-list"></div>
-          </article>
-        </section>
-
-        <section class="dashboard-grid wide-right">
-          <article class="dashboard-panel">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">Recent</p>
-                <h2>最新方案提交</h2>
-              </div>
-            </div>
-            <div id="recentSubmissions" class="submission-list"></div>
-          </article>
-
-          <article class="dashboard-panel dashboard-panel-evaluation">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">Evaluation</p>
-                <h2>自评与互评记录</h2>
-              </div>
-            </div>
-            <div id="evaluationBoard" class="evaluation-board"></div>
-            <div id="evaluationSummary" class="evaluation-summary"></div>
-            <div id="evaluationList" class="reflection-list"></div>
-          </article>
-        </section>
-
-        <section class="dashboard-grid wide-right">
-          <article class="dashboard-panel">
-            <div class="section-title-row">
-              <div>
-                <p class="eyebrow">Feedback</p>
-                <h2>课堂收获原文</h2>
-              </div>
-            </div>
-            <div id="reflectionList" class="reflection-list"></div>
           </article>
         </section>
       </main>

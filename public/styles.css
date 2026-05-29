@@ -1944,6 +1944,7 @@ body.teacher-page .metric-card::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
   margin-bottom: 22px;
+  align-items: start;
 }
 
 .dashboard-grid.wide-left {
@@ -1956,6 +1957,7 @@ body.teacher-page .metric-card::before {
 
 .dashboard-panel {
   padding: 26px;
+  align-self: start;
 }
 
 body.teacher-page .dashboard-panel .section-title-row {
@@ -1975,8 +1977,38 @@ body.teacher-page .dashboard-panel .eyebrow {
 }
 
 body.teacher-page .metric-card strong {
-  color: #f2fbff;
-  text-shadow: 0 0 18px rgba(49, 227, 255, 0.24);
+  color: #f2e8d6;
+  text-shadow: 0 0 10px rgba(242, 232, 214, 0.14);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(1) strong {
+  color: #3fe8ff;
+  text-shadow: 0 0 14px rgba(63, 232, 255, 0.35);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(2) strong {
+  color: #43f06f;
+  text-shadow: 0 0 14px rgba(67, 240, 111, 0.35);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(3) strong {
+  color: #3498ff;
+  text-shadow: 0 0 14px rgba(52, 152, 255, 0.35);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(4) strong {
+  color: #ff4ea7;
+  text-shadow: 0 0 14px rgba(255, 78, 167, 0.32);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(5) strong {
+  color: #9a6bff;
+  text-shadow: 0 0 14px rgba(154, 107, 255, 0.32);
+}
+
+body.teacher-page .metric-grid .metric-card:nth-child(6) strong {
+  color: #ffc84a;
+  text-shadow: 0 0 14px rgba(255, 200, 74, 0.32);
 }
 
 .stats-list {
@@ -2032,7 +2064,7 @@ body.teacher-page .metric-card strong {
 }
 
 .dashboard-chart-head strong {
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 20px;
 }
 
@@ -2100,7 +2132,7 @@ body.teacher-page .metric-card strong {
 .chart-y-label,
 .chart-x-label,
 .chart-point-label {
-  fill: #acd3ed;
+  fill: #c7d1d8;
   font-size: 13px;
   font-weight: 800;
 }
@@ -2284,6 +2316,43 @@ body.teacher-page .word-cloud {
   margin-bottom: 14px;
 }
 
+.dashboard-panel-evaluation {
+  padding-bottom: 22px;
+}
+
+.dashboard-panel-evaluation .evaluation-board {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dashboard-panel-evaluation .evaluation-board-card {
+  gap: 6px;
+  padding: 13px 14px 12px;
+  border-radius: 18px;
+}
+
+.dashboard-panel-evaluation .evaluation-board-card > strong {
+  font-size: 16px;
+}
+
+.dashboard-panel-evaluation .evaluation-board-row {
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.dashboard-panel-evaluation .evaluation-summary {
+  margin-bottom: 12px;
+}
+
+.dashboard-panel-evaluation .reflection-list {
+  max-height: 360px;
+}
+
+.dashboard-panel-evaluation .reflection-item {
+  padding: 14px;
+}
+
 .evaluation-summary span {
   display: inline-flex;
   min-height: 34px;
@@ -2313,7 +2382,7 @@ body.teacher-page .word-cloud {
 }
 
 .evaluation-board-card > strong {
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 18px;
 }
 
@@ -2330,7 +2399,7 @@ body.teacher-page .word-cloud {
 }
 
 .evaluation-board-label {
-  color: #9cc5df;
+  color: #c0d2df;
   font-size: 13px;
   font-weight: 800;
 }
@@ -2351,7 +2420,7 @@ body.teacher-page .word-cloud {
 }
 
 .evaluation-board-meta {
-  color: #9dbbd2;
+  color: #c0d2df;
   font-size: 13px;
   font-weight: 700;
 }
@@ -2373,7 +2442,7 @@ body.teacher-page .reflection-item {
 
 body.teacher-page .submission-item strong,
 body.teacher-page .reflection-item strong {
-  color: #f2fbff;
+  color: #f1eadf;
 }
 
 .submission-item strong,
@@ -2409,14 +2478,14 @@ body.teacher-page .reflection-item strong {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  color: #b7d8ee;
+  color: #c0d2df;
   font-size: 14px;
   font-weight: 900;
 }
 
 .teacher-mixed-dimension-head strong {
   margin: 0;
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 14px;
 }
 
@@ -2450,7 +2519,7 @@ body.teacher-page .reflection-item strong {
 }
 
 .teacher-evaluation-head strong {
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 20px;
 }
 
@@ -2501,13 +2570,13 @@ body.teacher-page .reflection-item strong {
 }
 
 .teacher-score-row span {
-  color: #b7d8ee;
+  color: #c0d2df;
   font-weight: 800;
 }
 
 .teacher-score-row strong {
   margin: 0;
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 14px;
 }
 
@@ -2542,7 +2611,7 @@ body.teacher-page .reflection-item strong {
 
 .teacher-peer-member > strong {
   margin: 0;
-  color: #f2fbff;
+  color: #f1eadf;
   font-size: 16px;
 }
 
@@ -2553,7 +2622,7 @@ body.teacher-page .teacher-peer-member > strong {
   align-items: center;
   padding: 0 12px;
   border-radius: 999px;
-  color: #d8f4ff;
+  color: #f1eadf;
   background: rgba(38, 168, 255, 0.2);
 }
 
